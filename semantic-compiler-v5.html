@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Semantic Compiler v5</title>
+<style>
+  :root {
+    --bg: #07080e;
+    --card: #0f1120;
+    --border: #171b2e;
+    --border2: #1e2438;
+    --A: #38bdf8;
+    --C: #4ade80;
+    --red: #f87171;
+    --warn: #fbbf24;
+    --needs: #fb923c;
+    --text: #a8b8d8;
+    --dim: #2a344e;
+    --mid: #4a5878;
+    --white: #dce8ff;
+    --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--mono); height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+  button { cursor: pointer; border: none; font-family: var(--mono); }
+  textarea { font-family: var(--mono); resize: none; }
+  ::-webkit-scrollbar { width: 3px; } ::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  /* Header */
+  #header {
+    padding: 9px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .h-title { font-size: 13px; color: var(--white); font-style: italic; }
+  .h-ver { font-size: 8px; color: var(--dim); letter-spacing: 3px; margin-left: 8px; }
+  .h-btns { display: flex; gap: 6px; }
+  .hbtn {
+    font-size: 8px; color: var(--dim); border: 1px solid var(--border);
+    border-radius: 2px; padding: 3px 9px; letter-spacing: 1px; transition: all 0.15s; background: none;
+  }
+  .hbtn:hover { color: var(--mid); border-color: var(--mid); }
+  .hbtn.green { color: var(--C); border-color: rgba(74,222,128,0.3); }
+  .hbtn.green:hover { background: rgba(74,222,128,0.06); }
+
+  /* Mode toggle */
+  #mode-toggle { display: flex; border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+  .mode-btn { font-size: 8px; letter-spacing: 1.5px; padding: 3px 10px; background: none; color: var(--dim); border: none; transition: all 0.15s; cursor: pointer; }
+  .mode-btn:hover { color: var(--mid); }
+  .mode-btn.active-fast { background: rgba(56,189,248,0.1); color: var(--A); }
+  .mode-btn.active-deep { background: rgba(251,146,60,0.1); color: var(--needs); }
+  .mode-sep { width: 1px; background: var(--border); }
+
+  /* Three panels */
+  #main { display: flex; flex: 1; overflow: hidden; }
+
+  /* LEFT */
+  #left { width: 220px; flex-shrink: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .panel-title { font-size: 7px; letter-spacing: 2.5px; color: var(--dim); padding: 8px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  #spec-body { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+
+  .sf { display: flex; flex-direction: column; gap: 2px; }
+  .sf-label { font-size: 7px; letter-spacing: 1.5px; color: var(--dim); }
+  .sf-val { font-size: 10px; color: var(--text); background: var(--card); border: 1px solid var(--border); border-radius: 2px; padding: 4px 7px; min-height: 20px; white-space: pre-wrap; word-break: break-word; }
+  .sf-val.filled { border-color: rgba(56,189,248,0.15); }
+  .sf-val.empty { color: var(--dim); font-style: italic; }
+  .sf-editable { cursor: text; outline: none; transition: border-color 0.15s; }
+  .sf-editable:hover { border-color: var(--mid); }
+  .sf-editable:focus { border-color: var(--A); color: var(--white); }
+  .sf-edit-hint { font-size: 6px; color: var(--dim); letter-spacing: 1px; margin-left: 4px; }
+
+  .mod-item { padding: 6px 8px; border: 1px solid var(--border); border-radius: 2px; background: var(--card); display: flex; flex-direction: column; gap: 3px; transition: border-color 0.2s; }
+  .mod-item.active { border-color: rgba(56,189,248,0.35); }
+  .mod-item.locked { border-color: rgba(74,222,128,0.2); }
+  .mod-item.needs_decision { border-color: rgba(251,146,60,0.35); }
+  .mod-top { display: flex; justify-content: space-between; align-items: center; }
+  .mod-id { font-size: 9px; color: var(--white); }
+  .mod-tag { font-size: 7px; letter-spacing: 1px; padding: 1px 5px; border-radius: 2px; }
+  .mod-tag.pending  { color: var(--dim); background: rgba(42,52,78,0.5); }
+  .mod-tag.building { color: var(--A); background: rgba(56,189,248,0.1); }
+  .mod-tag.reviewing{ color: var(--warn); background: rgba(251,191,36,0.1); }
+  .mod-tag.needs_fix{ color: var(--needs); background: rgba(251,146,60,0.1); }
+  .mod-tag.locked   { color: var(--C); background: rgba(74,222,128,0.1); }
+  .mod-tag.needs_decision { color: var(--red); background: rgba(248,113,113,0.1); }
+  .mod-tag.distilling { color: var(--needs); background: rgba(251,146,60,0.1); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .mod-desc { font-size: 8px; color: var(--mid); }
+
+  /* CENTER */
+  #center { flex: 1; display: flex; flex-direction: column; border-right: 1px solid var(--border); overflow: hidden; }
+  #step-label { font-size: 9px; color: var(--A); letter-spacing: 1px; padding: 8px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  #prompt-area { flex: 1; overflow-y: auto; padding: 12px 14px; }
+  #prompt-text {
+    font-size: 10px; color: var(--text); line-height: 1.65;
+    white-space: pre-wrap; word-break: break-word;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 2px; padding: 10px 12px; min-height: 100px;
+  }
+  #center-actions { padding: 10px 14px; border-top: 1px solid var(--border); flex-shrink: 0; display: flex; gap: 6px; }
+  .cbtn {
+    font-size: 8px; letter-spacing: 1px; padding: 6px 14px; border-radius: 2px;
+    border: 1px solid var(--border); color: var(--dim); background: none; transition: all 0.15s;
+  }
+  .cbtn:hover { color: var(--mid); }
+  .cbtn.primary { color: var(--A); border-color: rgba(56,189,248,0.3); }
+  .cbtn.primary:hover { background: rgba(56,189,248,0.06); }
+
+  /* RIGHT */
+  #right { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; }
+  #response-area { flex: 1; display: flex; flex-direction: column; padding: 10px 12px; gap: 8px; overflow: hidden; }
+  #response-input {
+    flex: 1; background: var(--card); border: 1px solid var(--border);
+    border-radius: 2px; color: var(--white); padding: 9px 11px;
+    font-size: 10px; line-height: 1.6; outline: none; min-height: 0;
+    transition: border-color 0.2s;
+  }
+  #response-input:focus { border-color: var(--mid); }
+  #response-input::placeholder { color: var(--dim); }
+  #parse-preview {
+    font-size: 9px; color: var(--dim); min-height: 18px;
+    padding: 3px 0; transition: color 0.2s;
+  }
+  #parse-preview.ok { color: var(--C); }
+  #parse-preview.err { color: var(--red); }
+  #right-actions { padding: 10px 12px; border-top: 1px solid var(--border); flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; }
+  .rbtn {
+    font-size: 8px; letter-spacing: 1px; padding: 7px 12px; border-radius: 2px;
+    border: 1px solid var(--border); color: var(--dim); background: none;
+    transition: all 0.15s; text-align: center; width: 100%;
+  }
+  .rbtn:hover { color: var(--mid); }
+  .rbtn.primary { color: var(--C); border-color: rgba(74,222,128,0.3); font-size: 9px; }
+  .rbtn.primary:hover { background: rgba(74,222,128,0.06); }
+  .rbtn.warn { color: var(--needs); border-color: rgba(251,146,60,0.3); }
+  .rbtn.warn:hover { background: rgba(251,146,60,0.06); }
+
+  /* Decision panel */
+  #decision-panel {
+    display: none; padding: 10px 12px;
+    border: 1px solid rgba(251,146,60,0.3); border-radius: 2px;
+    margin: 10px 12px; background: rgba(251,146,60,0.04);
+    flex-direction: column; gap: 6px;
+  }
+  #decision-panel.open { display: flex; }
+  .dec-title { font-size: 8px; color: var(--needs); letter-spacing: 1.5px; }
+  .dec-input {
+    background: var(--bg); border: 1px solid rgba(251,146,60,0.25); border-radius: 2px;
+    color: var(--white); padding: 7px 9px; font-size: 10px;
+    font-family: var(--mono); min-height: 50px; outline: none;
+    resize: none; width: 100%;
+  }
+  .dec-input:focus { border-color: rgba(251,146,60,0.5); }
+  .dec-btns { display: flex; gap: 5px; }
+  .dec-btn {
+    flex: 1; font-size: 8px; letter-spacing: 1px; padding: 5px 8px; border-radius: 2px;
+    border: 1px solid var(--border); color: var(--dim); background: none; transition: all 0.15s;
+  }
+  .dec-btn.ok { color: var(--needs); border-color: rgba(251,146,60,0.35); }
+  .dec-btn.ok:hover { background: rgba(251,146,60,0.08); }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--card); border: 1px solid var(--border2);
+    border-radius: 3px; padding: 7px 16px; font-size: 10px; color: var(--text);
+    opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 99;
+  }
+  #toast.show { opacity: 1; }
+
+  #status-bar {
+    padding: 5px 16px; border-top: 1px solid var(--border);
+    font-size: 8px; color: var(--dim); letter-spacing: 1px; flex-shrink: 0;
+    display: flex; gap: 12px;
+  }
+  #status-bar span { color: var(--mid); }
+
+  /* Next-step hint bar */
+  #hint-bar {
+    padding: 8px 16px; border-top: 1px solid var(--border2);
+    font-size: 9px; color: var(--dim); flex-shrink: 0;
+    display: flex; align-items: center; gap: 10px; background: var(--card);
+  }
+  #hint-label { color: var(--A); letter-spacing: 1px; font-size: 7px; flex-shrink: 0; }
+  #hint-text { color: var(--white); flex: 1; }
+  #hint-copy {
+    font-size: 7px; padding: 2px 8px; border: 1px solid rgba(56,189,248,0.25);
+    border-radius: 2px; color: var(--A); background: none; cursor: pointer;
+    font-family: var(--mono); letter-spacing: 1px; transition: all 0.15s; flex-shrink: 0;
+  }
+  #hint-copy:hover { background: rgba(56,189,248,0.08); }
+
+  /* Stability warning */
+  #stability-bar {
+    display: none; padding: 5px 16px; border-top: 1px solid rgba(251,191,36,0.2);
+    font-size: 8px; letter-spacing: 1px; flex-shrink: 0;
+    background: rgba(251,191,36,0.04);
+  }
+  #stability-bar.warn { display: flex; align-items: center; gap: 8px; color: var(--warn); }
+  #stability-bar.danger { display: flex; align-items: center; gap: 8px; color: var(--red); border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.04); }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <span class="h-title">Semantic Compiler</span>
+    <span class="h-ver">v5</span>
+  </div>
+  <div class="h-btns">
+    <div id="mode-toggle">
+      <button class="mode-btn active-fast" id="btn-fast" onclick="setMode('fast')">FAST</button>
+      <div class="mode-sep"></div>
+      <button class="mode-btn" id="btn-deep" onclick="setMode('deep')">DEEP</button>
+    </div>
+    <button class="hbtn" onclick="copySysPrompt()" style="color:#a78bfa;border-color:rgba(167,139,250,0.35);">SYS PROMPT</button>
+    <button class="hbtn" onclick="doImport()">載入</button>
+    <button class="hbtn green" onclick="doExport()">匯出</button>
+    <button class="hbtn" onclick="doReset()">重置</button>
+  </div>
+</div>
+
+<div id="main">
+
+  <!-- LEFT: Spec state -->
+  <div id="left">
+    <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>SPEC</span>
+      <div style="display:flex;gap:4px;align-items:center;">
+        <button class="hbtn" onclick="exportMergeJSON(this)" id="export-merge-btn" style="font-size:7px;padding:2px 7px;color:#b388ff;border-color:rgba(160,120,255,.4);">📤 Merge</button>
+        <button class="hbtn" onclick="toggleJsonInject()" id="inject-toggle-btn" style="font-size:7px;padding:2px 7px;">＋ JSON</button>
+      </div>
+    </div>
+
+    <!-- JSON inject area (collapsible) -->
+    <div id="json-inject-area" style="display:none; flex-shrink:0; border-bottom:1px solid var(--border); padding:8px 12px; display:none; flex-direction:column; gap:5px;">
+      <div style="font-size:7px;color:var(--needs);letter-spacing:1.5px;">外掛 JSON（MODE A/C）</div>
+      <textarea id="json-input"
+        style="background:var(--bg);border:1px solid rgba(251,146,60,0.25);border-radius:2px;color:var(--text);padding:6px 8px;font-size:9px;font-family:var(--mono);height:80px;outline:none;resize:none;width:100%;"
+        placeholder="貼上已有 spec JSON…"
+        oninput="onJsonInjectChange()"></textarea>
+      <div id="inject-preview" style="font-size:8px;color:var(--dim);">—</div>
+      <button class="rbtn" style="font-size:7px;padding:3px 0;color:var(--needs);border-color:rgba(251,146,60,0.3);" onclick="loadFromInject()">載入並覆蓋 Spec</button>
+    </div>
+
+    <div id="spec-body"></div>
+  </div>
+
+  <!-- CENTER: Prompt -->
+  <div id="center">
+    <div id="step-label">NEXT STEP</div>
+    <div id="prompt-area">
+      <div id="prompt-text"></div>
+    </div>
+    <div id="center-actions">
+      <button class="cbtn primary" onclick="copyPrompt()">複製 Prompt</button>
+      <button class="cbtn" onclick="clearResponse()">清空回填</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: Response input -->
+  <div id="right">
+    <div class="panel-title">AI 回填</div>
+    <div id="response-area">
+      <textarea id="response-input" placeholder="貼上 AI 回覆…" oninput="previewParse()"></textarea>
+      <div id="parse-preview">—</div>
+    </div>
+    <div id="decision-panel" id="decision-panel">
+      <div class="dec-title">⚠ NEEDS DECISION</div>
+      <textarea class="dec-input" id="decision-input" placeholder="輸入新方向、修改目標或放寬限制…"></textarea>
+      <div class="dec-btns">
+        <button class="dec-btn" onclick="skipModule()">略過此模組</button>
+        <button class="dec-btn ok" onclick="applyDecision()">套用並重試</button>
+      </div>
+    </div>
+    <div id="right-actions">
+      <button class="rbtn primary" onclick="submitResponse()">▶ 提交結果</button>
+    </div>
+  </div>
+
+</div>
+
+<div id="stability-bar"></div>
+
+<div id="status-bar">
+  <span id="sb-status">INIT</span>
+  <span id="sb-module"></span>
+  <span id="sb-progress"></span>
+  <span id="sb-mode" style="color:var(--A)">⚡ FAST</span>
+  <span id="sb-turns" style="margin-left:auto;color:var(--dim)"></span>
+</div>
+
+<div id="hint-bar" style="display:none">
+  <span id="hint-label">NEXT →</span>
+  <span id="hint-text"></span>
+  <button id="hint-copy" onclick="copyHint()">複製</button>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════
+// STATE
+// ══════════════════════════════
+let mode = 'fast'; // 'fast' | 'deep'
+
+let spec = {
+  goal: '',
+  constraints: [],
+  modules: [],
+  current_module: null,
+  global_status: 'init',
+  user_input: '',
+  _turn_count: 0,
+  _stability: null
+};
+
+// ══════════════════════════════
+// JSON EXTRACTION (容錯)
+// ══════════════════════════════
+function extractJSON(text) {
+  if (!text || !text.trim()) return null;
+
+  // Try direct parse first
+  try { return JSON.parse(text.trim()); } catch {}
+
+  // Extract outermost { } or [ ]
+  const objMatch = text.match(/\{[\s\S]*\}/);
+  const arrMatch = text.match(/\[[\s\S]*\]/);
+
+  // Prefer array if it appears before object (for PLAN step)
+  let candidate = null;
+  if (objMatch && arrMatch) {
+    candidate = text.indexOf('[') < text.indexOf('{') ? arrMatch[0] : objMatch[0];
+  } else {
+    candidate = objMatch?.[0] || arrMatch?.[0] || null;
+  }
+
+  if (!candidate) return null;
+
+  // Repair common issues
+  let s = candidate;
+  s = s.replace(/,(\s*[}\]])/g, '$1');          // trailing commas
+  s = s.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":'); // unquoted keys
+  s = s.replace(/:\s*'([^']*)'/g, ': "$1"');    // single-quoted values
+
+  try { return JSON.parse(s); } catch { return null; }
+}
+
+// ══════════════════════════════
+// CONVERGENCE HEADERS
+// INIT/PLAN：低風險，壓縮版
+// BUILD/REVIEW/FIX：核心控制點，保留完整
+// ══════════════════════════════
+const CH_LITE = `[規則] 只輸出JSON，不要其他文字\n`;
+
+const CONVERGENCE_HEADER =
+`[全域控制規則]
+角色鎖定：你當前的角色由 status 決定，不可跨越
+停止條件：可執行度 ≥ 80% 立即停止，不繼續優化
+禁止行為：重複內容、延伸新問題、替代方案、解釋推導過程
+輸出格式：只輸出 JSON，不要其他任何文字
+`;
+
+const CONVERGENCE_ROLES = {
+  BUILD:  `[角色：生成器] 只能生成設計，不可評論或審核`,
+  REVIEW: `[角色：審核員] 只能列出問題，不可重寫或建議替代方案`,
+  FIX:    `[角色：修正器] 只能修正指定問題，不可改變模組目標`,
+  FINAL:  `[角色：整合員] 只能整合已完成內容，不可修改任何模組`,
+};
+
+// ══════════════════════════════
+// PROMPT TEMPLATES
+// ══════════════════════════════
+const PROMPTS = {
+  INIT: (input, jsonRaw) => {
+    const hasJSON = jsonRaw && jsonRaw.trim() && jsonRaw.trim() !== 'null';
+    if (hasJSON) {
+      return `${CH_LITE}你是語義編譯器。請根據優先權規則整合需求與 JSON。
+
+[優先權規則]
+- JSON 為唯一主體（Single Source of Truth）
+- 使用者文字只能補充缺失或修正錯誤
+- 不可忽略 JSON 內容，不可破壞原結構
+
+[自動判斷模式]
+- 若 JSON 完整、無補充說明 → MODE A（JSON 驅動）
+- 若 JSON 完整、有補充說明 → MODE C（混合修正）
+
+需求補充：
+${input || '（無）'}
+
+JSON：
+${jsonRaw}
+
+[收斂規則] 可執行度 ≥ 80% 即停止，只輸出一個收斂版本
+
+輸出 JSON：
+{
+  "mode": "A | C",
+  "goal": "...",
+  "constraints": [...],
+  "modules": [{"id": "...", "description": "..."}],
+  "risks": [],
+  "gaps": []
+}`;
+    } else {
+      return `${CH_LITE}需求分析：只提取目標與限制，不新增需求
+
+需求：
+${input}
+
+輸出 JSON：
+{
+  "mode": "B",
+  "goal": "一句話描述目標",
+  "constraints": ["限制1", "限制2"]
+}`;
+    }
+  },
+
+  PLAN: (goal, constraints) =>
+`${CH_LITE}架構拆解：只拆模組，不評論目標
+
+目標：${goal}
+限制：${constraints.length ? constraints.join('、') : '無'}
+模組數量：3~6 個
+
+輸出 JSON 陣列：
+[
+  {"id": "snake_case名稱", "description": "一句話描述"}
+]`,
+
+  BUILD: (goal, constraints, mod) =>
+`${CONVERGENCE_HEADER}${CONVERGENCE_ROLES.BUILD}
+
+目標：${goal}
+限制：${constraints.length ? constraints.join('、') : '無'}
+
+模組：${mod.id}
+說明：${mod.description}
+
+[收斂規則]
+- 設計達到 80% 可執行即停止
+- 最多列出 3 個潛在問題
+- 禁止提出新需求或延伸功能
+
+輸出 JSON：
+{
+  "output": "完整設計內容",
+  "issues": ["潛在問題，最多3個，若無給空陣列"]
+}`,
+
+  REVIEW: (goal, mod) =>
+`${CONVERGENCE_HEADER}${CONVERGENCE_ROLES.REVIEW}
+
+目標：${goal}
+模組：${mod.id} — ${mod.description}
+
+待審核輸出：
+${mod.output}
+
+[收斂規則]
+- 只列出阻擋執行的問題（BLOCK 級）
+- 最多 3 個問題
+- 若無阻擋問題，issues 給空陣列，立即停止
+
+輸出 JSON：
+{
+  "issues": ["阻擋問題（若無給空陣列）"]
+}`,
+
+  FIX: (goal, constraints, mod) =>
+`${CONVERGENCE_HEADER}${CONVERGENCE_ROLES.FIX}
+
+目標：${goal}
+模組：${mod.id}
+
+[錯誤預算剩餘：${2 - mod.attempts} 次]
+若此次修正後仍有問題，系統將轉為人工決策，停止自動修正
+
+必須修正的問題：
+${Array.isArray(mod.issues) ? mod.issues.map((i,n)=>`${n+1}. ${i}`).join('\n') : mod.issues}
+
+原始輸出：
+${mod.output}
+
+[修正限制]
+- 只修正上述問題，不可修改其他部分
+- 修正後 issues 必須為空陣列
+- 禁止新增功能或改變設計方向
+
+輸出 JSON：
+{
+  "output": "修正後的完整設計",
+  "issues": []
+}`,
+
+  FINAL: (goal, modules) =>
+`${CONVERGENCE_HEADER}${CONVERGENCE_ROLES.FINAL}
+
+目標：${goal}
+
+已完成模組（${modules.filter(m=>m.status==='locked').length} 個）：
+${modules.filter(m => m.status === 'locked').map(m => `[${m.id}] ${m.output}`).join('\n\n')}
+
+[收斂規則]
+- risks 最多 5 個，只列關鍵風險
+- gaps 最多 3 個，只列整合缺口
+- 禁止建議新增模組或修改已完成模組
+
+輸出 JSON：
+{
+  "final_output": "整合摘要（一段）",
+  "risks": ["關鍵風險，最多5個"],
+  "gaps": ["整合缺口，最多3個"]
+}`,
+
+  // ── DEEP MODE 專用 ──
+
+  BUILD_CANDIDATES: (goal, constraints, mod) =>
+`${CONVERGENCE_HEADER}${CONVERGENCE_ROLES.BUILD}
+
+[模式：DEEP — 多候選生成]
+目標：${goal}
+限制：${constraints.length ? constraints.join('、') : '無'}
+
+模組：${mod.id}
+說明：${mod.description}
+
+[任務]
+生成 3 個不同設計方向。每個方向有不同的取捨，不要相互重複。
+
+[收斂規則]
+- 每個候選設計控制在 2~3 句話
+- 標出每個方案的核心差異
+- 禁止評論哪個最好（交由下一步蒸餾）
+
+輸出 JSON：
+{
+  "candidates": [
+    {"id": "A", "design": "方案A設計", "tradeoff": "優缺點一句話"},
+    {"id": "B", "design": "方案B設計", "tradeoff": "優缺點一句話"},
+    {"id": "C", "design": "方案C設計", "tradeoff": "優缺點一句話"}
+  ]
+}`,
+
+  DISTILL: (goal, mod) =>
+`${CONVERGENCE_HEADER}[角色：蒸餾器] 從多個候選中提取最佳共性，輸出單一收斂版本
+
+[模式：DEEP — 蒸餾]
+目標：${goal}
+模組：${mod.id}
+
+候選方案：
+${(mod.candidates || []).map(c => `[${c.id}] ${c.design}\n取捨：${c.tradeoff}`).join('\n\n')}
+
+[蒸餾規則]
+- 找出各方案的共性部分（保留）
+- 找出各方案的衝突部分（選最符合目標的）
+- 去掉所有過度理想化的設計
+- 輸出一個可直接執行的收斂版本
+
+[停止條件]
+- 可執行度 ≥ 80% 立即停止，不繼續優化
+
+輸出 JSON：
+{
+  "output": "蒸餾後的最終設計",
+  "issues": ["若有殘留問題列出，最多3個，若無給空陣列"],
+  "rationale": "一句話說明為何這樣收斂"
+}`
+};
+
+// ══════════════════════════════
+// JSON INJECT PANEL
+// ══════════════════════════════
+// ═══════════════════════════════════════════════════════
+// DEVLOG 橋樑：匯出可直接回寫 Devlog 的 Merge JSON
+// ═══════════════════════════════════════════════════════
+function exportMergeJSON(btn) {
+  // 收集所有已 locked 的模組（及 reviewing 有 output 的）
+  const results = spec.modules
+    .filter(m => m.status === 'locked' || (m.status === 'reviewing' && m.output))
+    .map(m => {
+      // 從 output 中嘗試提取 decision 推斷
+      const outText = m.output || '';
+      let decision = 'adopted';
+      if (/rejected|否決|拒絕/i.test(outText)) decision = 'rejected';
+      else if (/partial|部分|修改/i.test(outText)) decision = 'partial';
+
+      // impact 推斷
+      let impact = 'medium';
+      if (/high|高|重大|critical/i.test(outText)) impact = 'high';
+      else if (/low|低|小|minor/i.test(outText)) impact = 'low';
+
+      return {
+        module_id: m.id,
+        decision,
+        result: outText.slice(0, 300),
+        impact,
+        _module_desc: m.description ? m.description.slice(0, 60) : ''
+      };
+    });
+
+  if (!results.length) {
+    toast('✗ 沒有已完成的模組（需 locked 狀態）');
+    return;
+  }
+
+  const payload = {
+    _source: 'semantic_v5',
+    _exported_at: new Date().toISOString().slice(0, 16),
+    _goal: spec.goal || '',
+    results
+  };
+
+  const json = JSON.stringify(results, null, 2);  // 只輸出 results 陣列，Devlog merge 直接貼
+  navigator.clipboard.writeText(json).then(() => {
+    toast(`✓ Merge JSON 已複製（${results.length} 個模組）→ 貼到 Devlog 橋樑的②回寫框`);
+    if (btn) { const o = btn.textContent; btn.textContent = '✓ 已複製！'; setTimeout(() => { btn.textContent = o; }, 1500); }
+  }).catch(() => {
+    // fallback: show in a prompt
+    const pre = document.createElement('pre');
+    pre.style.cssText = 'position:fixed;top:10px;left:10px;right:10px;bottom:10px;z-index:9999;background:#111;color:#ddd;padding:16px;border-radius:8px;overflow:auto;font-size:10px;white-space:pre-wrap;';
+    pre.textContent = json;
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '× 關閉';
+    closeBtn.style.cssText = 'position:absolute;top:8px;right:8px;background:var(--red);color:#fff;border:none;border-radius:4px;padding:3px 9px;cursor:pointer;';
+    closeBtn.onclick = () => document.body.removeChild(pre);
+    pre.appendChild(closeBtn);
+    document.body.appendChild(pre);
+    toast('複製失敗，已顯示 JSON 文字框');
+  });
+}
+
+function toggleJsonInject() {
+  const area = document.getElementById('json-inject-area');
+  const btn = document.getElementById('inject-toggle-btn');
+  const open = area.style.display === 'none' || area.style.display === '';
+  area.style.display = open ? 'flex' : 'none';
+  btn.textContent = open ? '✕ JSON' : '＋ JSON';
+  btn.style.color = open ? 'var(--needs)' : '';
+  if (open) render(); // refresh prompt (json input now visible)
+}
+
+function onJsonInjectChange() {
+  const raw = document.getElementById('json-input').value.trim();
+  const el = document.getElementById('inject-preview');
+  if (!raw) { el.textContent = '—'; el.style.color = 'var(--dim)'; render(); return; }
+  const data = extractJSON(raw);
+  if (data && data.goal) {
+    el.textContent = `✓ 偵測到 Spec：${data.goal.slice(0,40)}`;
+    el.style.color = 'var(--needs)';
+  } else if (data) {
+    el.textContent = `✓ JSON 有效（${Object.keys(data).join(', ')}）`;
+    el.style.color = 'var(--A)';
+  } else {
+    el.textContent = '✗ 無法解析';
+    el.style.color = 'var(--red)';
+  }
+  render(); // refresh prompt to reflect json state
+}
+
+function loadFromInject() {
+  const raw = document.getElementById('json-input').value.trim();
+  if (!raw) { toast('沒有 JSON 可載入'); return; }
+  const data = extractJSON(raw);
+  if (!data) { toast('✗ JSON 解析失敗'); return; }
+  if (!data.goal) { toast('✗ 缺少 goal 欄位'); return; }
+  if (!confirm('確定用此 JSON 覆蓋目前 Spec？')) return;
+
+  spec.goal = data.goal;
+  spec.constraints = data.constraints || [];
+  spec.modules = (data.modules || []).map(m => ({
+    id: m.id, description: m.description,
+    status: m.status || 'pending', attempts: m.attempts || 0,
+    issues: m.issues || [], output: m.output || null,
+    candidates: m.candidates || null
+  }));
+  if (data.global_audit || data.risks) {
+    spec.final = data.final || { final_output: '', risks: data.risks || [], gaps: data.gaps || [] };
+  }
+  spec._turn_count = data._turn_count || 0;
+  spec._stability = data._stability || null;
+  const first = spec.modules.find(m => m.status !== 'locked' && m.status !== 'needs_decision');
+  spec.current_module = first ? first.id : null;
+  spec.global_status = first ? 'building' : 'done';
+  spec._initialized = true;
+
+  document.getElementById('json-input').value = '';
+  document.getElementById('inject-preview').textContent = '—';
+  render();
+  toast(`✓ 載入成功：${spec.modules.length} 個模組`);
+}
+
+// ══════════════════════════════
+// MODE CONTROL
+// ══════════════════════════════
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-fast').className = 'mode-btn' + (m === 'fast' ? ' active-fast' : '');
+  document.getElementById('btn-deep').className = 'mode-btn' + (m === 'deep' ? ' active-deep' : '');
+  // Reset any pending modules back to pending if switching mid-session
+  spec.modules.forEach(mod => {
+    if (mod.status === 'distilling') { mod.status = 'pending'; mod.candidates = null; }
+  });
+  render();
+  toast(m === 'fast' ? '⚡ Fast mode：單一生成' : '◆ Deep mode：多候選 → 蒸餾');
+}
+
+// ══════════════════════════════
+// STEP LOGIC
+// ══════════════════════════════
+function getStepLabel() {
+  if (!spec.goal) return '步驟 1 / 初始化';
+  if (!spec.modules.length) return '步驟 2 / 拆解模組';
+  const m = getCurrentModule();
+  if (!m) return '最終步驟 / 整合審查';
+  const modeTag = mode === 'deep' ? ' [DEEP]' : '';
+  const labels = {
+    pending:        `生成模組：${m.id}${modeTag}`,
+    distilling:     `蒸餾模組：${m.id} [DEEP]`,
+    building:       `審核模組：${m.id}`,
+    reviewing:      `審核模組：${m.id}`,
+    needs_fix:      `修正模組：${m.id}（第 ${m.attempts + 1} 次）`,
+    needs_decision: `⚠ 需要決策：${m.id}`,
+  };
+  return labels[m.status] || '處理中';
+}
+
+function getCurrentPrompt() {
+  const jsonRaw = document.getElementById('json-input')?.value?.trim() || '';
+  if (!spec.goal) return PROMPTS.INIT(spec.user_input || '（請先在右側輸入需求）', jsonRaw);
+  if (!spec.modules.length) return PROMPTS.PLAN(spec.goal, spec.constraints);
+  const m = getCurrentModule();
+  if (!m) return PROMPTS.FINAL(spec.goal, spec.modules);
+
+  if (mode === 'deep') {
+    if (m.status === 'pending') return PROMPTS.BUILD_CANDIDATES(spec.goal, spec.constraints, m);
+    if (m.status === 'distilling') return PROMPTS.DISTILL(spec.goal, m);
+  } else {
+    if (m.status === 'pending') return PROMPTS.BUILD(spec.goal, spec.constraints, m);
+  }
+
+  if (m.status === 'building' || m.status === 'reviewing') return PROMPTS.REVIEW(spec.goal, m);
+  if (m.status === 'needs_fix') return PROMPTS.FIX(spec.goal, spec.constraints, m);
+  if (m.status === 'needs_decision') return '⚠ 此模組已卡住，請使用右側決策面板輸入新方向。';
+  return '所有模組已完成。';
+}
+
+function getCurrentModule() {
+  if (!spec.current_module) return null;
+  return spec.modules.find(m => m.id === spec.current_module) || null;
+}
+
+function advanceToNext() {
+  const idx = spec.modules.findIndex(m => m.id === spec.current_module);
+  const next = spec.modules.slice(idx + 1).find(m => m.status !== 'locked' && m.status !== 'needs_decision');
+  if (next) {
+    spec.current_module = next.id;
+  } else {
+    spec.current_module = null;
+    spec.global_status = 'done';
+  }
+}
+
+// ══════════════════════════════
+// SUBMIT
+// ══════════════════════════════
+function submitResponse() {
+  const raw = document.getElementById('response-input').value.trim();
+
+  // ── 每次提交：遞增輪次計數 + 讀取 stability ──
+  spec._turn_count = (spec._turn_count || 0) + 1;
+  const _parsed = extractJSON(raw);
+  if (_parsed && _parsed.stability) {
+    spec._stability = _parsed.stability;
+    if (_parsed.stability.warning === 'NEAR_LIMIT') {
+      toast('⚡ 上下文接近限制，建議本輪後匯出 Spec');
+    } else if (_parsed.stability.warning === 'UNSTABLE') {
+      toast('⚠ UNSTABLE：建議立即匯出 Spec 並重啟');
+    }
+  }
+
+  // Special case: INIT from user_input
+  if (!spec.goal) {
+    if (!spec.user_input) {
+      toast('請先在右側貼上需求（純文字），再提交');
+      return;
+    }
+    const data = extractJSON(raw);
+    if (!data || !data.goal) { toast('解析失敗，請確認 AI 輸出包含 JSON'); return; }
+
+    spec.goal = data.goal;
+    spec.constraints = data.constraints || [];
+
+    // MODE A / C: AI returned full modules → skip PLAN, jump straight to building
+    if ((data.mode === 'A' || data.mode === 'C') && Array.isArray(data.modules) && data.modules.length) {
+      spec.modules = data.modules.map(m => ({
+        id: m.id, description: m.description,
+        status: 'pending', attempts: 0, issues: [], output: null
+      }));
+      if (data.risks?.length || data.gaps?.length) {
+        spec.final = { final_output: '', risks: data.risks || [], gaps: data.gaps || [] };
+      }
+      spec.current_module = spec.modules[0].id;
+      spec.global_status = 'building';
+      toast(`MODE ${data.mode}：已載入 ${spec.modules.length} 個模組，跳過 PLAN`);
+    } else {
+      // MODE B: normal flow
+      spec.global_status = 'planning';
+    }
+
+    clearResponse();
+    render(); return;
+  }
+
+  // PLAN
+  if (!spec.modules.length) {
+    const data = extractJSON(raw);
+    if (!Array.isArray(data) || !data.length) { toast('解析失敗，需要 JSON 陣列'); return; }
+    spec.modules = data.map(d => ({
+      id: d.id, description: d.description,
+      status: 'pending', attempts: 0, issues: [], output: null
+    }));
+    const first = spec.modules.find(m => m.status === 'pending');
+    spec.current_module = first ? first.id : null;
+    spec.global_status = 'building';
+    clearResponse(); render(); return;
+  }
+
+  const m = getCurrentModule();
+
+  // FINAL
+  if (!m) {
+    const data = extractJSON(raw);
+    if (!data) { toast('解析失敗'); return; }
+    spec.final = data;
+    clearResponse(); render(); return;
+  }
+
+  const data = extractJSON(raw);
+  if (!data) { toast('解析失敗，請確認 AI 輸出包含 JSON'); return; }
+
+  // DEEP: pending → collect candidates → distilling
+  if (mode === 'deep' && m.status === 'pending') {
+    if (!data.candidates || !Array.isArray(data.candidates)) {
+      toast('解析失敗，需要 candidates 陣列'); return;
+    }
+    m.candidates = data.candidates;
+    m.status = 'distilling';
+    clearResponse(); render(); return;
+  }
+
+  // DEEP: distilling → output (then go to review like fast)
+  if (m.status === 'distilling') {
+    m.output = data.output || '';
+    m.issues = data.issues || [];
+    m.status = 'building';
+    clearResponse(); render(); return;
+  }
+
+  if (m.status === 'pending') {
+    m.output = data.output || '';
+    m.issues = data.issues || [];
+    m.status = 'building';
+  }
+  else if (m.status === 'building' || m.status === 'reviewing') {
+    if (data.issues && data.issues.length > 0) {
+      m.issues = data.issues;
+      m.status = 'needs_fix';
+    } else {
+      m.status = 'locked';
+      advanceToNext();
+    }
+  }
+  else if (m.status === 'needs_fix') {
+    m.output = data.output || m.output;
+    m.issues = data.issues || [];
+    m.attempts++;
+    if (m.issues.length > 0 && m.attempts >= 2) {
+      m.status = 'needs_decision';
+    } else if (m.issues.length > 0) {
+      m.status = 'needs_fix';
+    } else {
+      m.status = 'locked';
+      advanceToNext();
+    }
+  }
+
+  clearResponse();
+  render();
+}
+
+// ══════════════════════════════
+// DECISION
+// ══════════════════════════════
+function applyDecision() {
+  const m = getCurrentModule();
+  if (!m) return;
+  const guidance = document.getElementById('decision-input').value.trim();
+  if (guidance) {
+    m.description = m.description + '\n[人工指導] ' + guidance;
+  }
+  m.status = 'pending';
+  m.attempts = 0;
+  m.issues = [];
+  document.getElementById('decision-input').value = '';
+  render();
+}
+
+function skipModule() {
+  const m = getCurrentModule();
+  if (!m) return;
+  m.status = 'needs_decision';
+  document.getElementById('decision-input').value = '';
+  advanceToNext();
+  render();
+}
+
+// ══════════════════════════════
+// UI HELPERS
+// ══════════════════════════════
+function previewParse() {
+  const raw = document.getElementById('response-input').value.trim();
+  const el = document.getElementById('parse-preview');
+
+  // Special: INIT needs user_input from response box as plain text
+  if (!spec.goal) {
+    if (raw) {
+      spec.user_input = raw;
+      el.className = 'ok'; el.textContent = '✓ 已儲存為需求文字';
+    } else {
+      el.className = ''; el.textContent = '—';
+    }
+    render(); return;
+  }
+
+  if (!raw) { el.className = ''; el.textContent = '—'; return; }
+  const data = extractJSON(raw);
+  if (data) {
+    el.className = 'ok';
+    el.textContent = Array.isArray(data)
+      ? `✓ 陣列 ${data.length} 項`
+      : `✓ JSON：${Object.keys(data).join(', ')}`;
+  } else {
+    el.className = 'err'; el.textContent = '✗ 無法解析 JSON';
+  }
+}
+
+function clearResponse() {
+  document.getElementById('response-input').value = '';
+  document.getElementById('parse-preview').className = '';
+  document.getElementById('parse-preview').textContent = '—';
+}
+
+function copyPrompt() {
+  const text = document.getElementById('prompt-text').textContent;
+  navigator.clipboard?.writeText(text) || fallbackCopy(text);
+  toast('✓ 已複製');
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text; document.body.appendChild(ta); ta.select();
+  document.execCommand('copy'); document.body.removeChild(ta);
+}
+
+let _toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ══════════════════════════════
+// COPY SYSTEM PROMPT
+// ══════════════════════════════
+function copySysPrompt() {
+  const SYS_PROMPT = `你是 Semantic Compiler 執行器。
+
+【啟動指令】
+當使用者輸入「!啟動」時，立即開始執行完整流程。
+
+模式選擇（跟在 !啟動 後面）：
+- !啟動 fast　→　FAST 模式：單一生成（BUILD → REVIEW → FIX）
+- !啟動 deep　→　DEEP 模式：多候選蒸餾（BUILD_CANDIDATES → DISTILL → REVIEW → FIX）
+- !啟動　（未指定）→　預設 FAST 模式
+
+【流程順序】
+INIT → PLAN → BUILD → REVIEW → FIX → FINAL
+每次只執行一步，輸出一個 JSON，等待使用者提交後再繼續。
+
+【每輪輸出規則】
+1. 只輸出 JSON，不加任何說明文字或 markdown 包裹
+2. JSON 必須可被以下邏輯解析（extractJSON 規範）：
+   - 直接輸出合法 JSON，不加 \`\`\`json 包裹
+   - key 必須加雙引號
+   - 不可有 trailing comma
+3. 每輪 JSON 必須包含：
+   "spec._turn_count": N  （從 1 開始，每輪遞增）
+4. 當上下文輪次接近限制時，加入：
+   "stability": {
+     "remaining_steps": N,
+     "confidence": 0.0~1.0,
+     "warning": "NEAR_LIMIT" | "UNSTABLE" | null
+   }
+
+【各步驟輸出格式】
+
+INIT（分析需求）：
+{
+  "mode": "A | B | C",
+  "goal": "一句話描述目標",
+  "constraints": ["限制1", "限制2"],
+  "modules": [{"id": "snake_case", "description": "說明"}],
+  "spec._turn_count": 1
+}
+
+PLAN（拆解模組，若 INIT 未含 modules）：
+[
+  {"id": "snake_case", "description": "說明"}
+]
+
+BUILD（FAST 模式，生成模組設計）：
+{
+  "output": "完整設計內容",
+  "issues": [],
+  "spec._turn_count": N
+}
+
+BUILD_CANDIDATES（DEEP 模式，生成三個候選）：
+{
+  "candidates": [
+    {"id": "A", "design": "方案A設計", "tradeoff": "優缺點一句話"},
+    {"id": "B", "design": "方案B設計", "tradeoff": "優缺點一句話"},
+    {"id": "C", "design": "方案C設計", "tradeoff": "優缺點一句話"}
+  ],
+  "spec._turn_count": N
+}
+
+DISTILL（DEEP 模式，蒸餾收斂）：
+{
+  "output": "蒸餾後最終設計",
+  "issues": [],
+  "rationale": "一句話說明為何這樣收斂",
+  "spec._turn_count": N
+}
+
+REVIEW（審核）：
+{
+  "issues": ["阻擋問題，若無給空陣列"],
+  "spec._turn_count": N
+}
+
+FIX（修正）：
+{
+  "output": "修正後完整設計",
+  "issues": [],
+  "spec._turn_count": N
+}
+
+FINAL（整合）：
+{
+  "final_output": "整合摘要",
+  "risks": ["風險，最多5個"],
+  "gaps": ["缺口，最多3個"],
+  "spec._turn_count": N
+}
+
+【禁止行為】
+- 禁止中途詢問使用者
+- 禁止跳步
+- 禁止輸出 JSON 以外的文字
+- 禁止省略 spec._turn_count 欄位
+
+【收斂規則】
+- 可執行度 ≥ 80% 立即停止，不繼續優化
+- issues 超過 2 次修正失敗 → 標記 needs_decision，跳至下一模組
+- 所有模組 locked 後執行 FINAL`;
+
+  navigator.clipboard?.writeText(SYS_PROMPT).then(() => {
+    toast('✓ 系統提示已複製，可直接貼給下一個 AI');
+  }).catch(() => {
+    fallbackCopy(SYS_PROMPT);
+    toast('✓ 已複製（fallback）');
+  });
+}
+
+
+function getNextHint() {
+  if (!spec.goal) return '貼上需求文字 → 複製 Prompt → 給 AI → 將結果貼回右側 → 提交';
+  if (!spec.modules.length) return '複製 Prompt（PLAN）→ 給 AI → 貼回結果 → 提交';
+  const m = getCurrentModule();
+  if (!m) return '複製 Prompt（FINAL）→ 給 AI → 貼回結果 → 提交 → 匯出 JSON';
+
+  const remaining = spec.modules.filter(x => x.status !== 'locked' && x.status !== 'needs_decision').length;
+
+  const hints = {
+    pending:        `複製 Prompt（BUILD: ${m.id}）→ 給 AI → 貼回 → 提交　剩 ${remaining} 個模組`,
+    distilling:     `複製 Prompt（DISTILL: ${m.id}）→ 給 AI → 貼回 → 提交`,
+    building:       `複製 Prompt（REVIEW: ${m.id}）→ 給 AI → 貼回 → 提交`,
+    reviewing:      `複製 Prompt（REVIEW: ${m.id}）→ 給 AI → 貼回 → 提交`,
+    needs_fix:      `複製 Prompt（FIX: ${m.id}，第 ${m.attempts+1} 次）→ 給 AI → 貼回 → 提交`,
+    needs_decision: `⚠ 此模組需人工決策：在右側決策框輸入新方向 → 套用並重試`,
+  };
+  return hints[m.status] || '繼續下一步';
+}
+
+function updateHint() {
+  const bar = document.getElementById('hint-bar');
+  const txt = document.getElementById('hint-text');
+  if (spec.global_status === 'done' && spec.final) {
+    txt.textContent = '✓ 全部完成 → 點「匯出」儲存 JSON';
+    bar.style.display = 'flex';
+  } else if (spec.goal || spec.user_input) {
+    txt.textContent = getNextHint();
+    bar.style.display = 'flex';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function copyHint() {
+  const txt = document.getElementById('hint-text').textContent;
+  navigator.clipboard?.writeText(txt) || fallbackCopy(txt);
+  toast('✓ 已複製下一步指令');
+}
+
+function updateStabilityBar() {
+  const bar = document.getElementById('stability-bar');
+  const s = spec._stability;
+  if (!s || !s.warning) { bar.className = ''; bar.textContent = ''; return; }
+
+  const steps = s.remaining_steps ?? '?';
+  const conf = s.confidence ? ` | 信心度 ${Math.round(s.confidence * 100)}%` : '';
+  const turns = spec._turn_count;
+
+  if (s.warning === 'UNSTABLE') {
+    bar.className = 'danger';
+    bar.innerHTML = `⚠ UNSTABLE — 剩餘穩定步數 ${steps}${conf} | 輪次 ${turns} — 建議立即匯出 Spec 並重啟`;
+  } else if (s.warning === 'NEAR_LIMIT') {
+    bar.className = 'warn';
+    bar.innerHTML = `⚡ NEAR_LIMIT — 剩餘穩定步數 ${steps}${conf} | 輪次 ${turns} — 建議本輪後匯出 Spec`;
+  } else {
+    bar.className = ''; bar.textContent = '';
+  }
+}
+
+
+function render() {
+  // Prompt
+  document.getElementById('step-label').textContent = getStepLabel();
+  document.getElementById('prompt-text').textContent = getCurrentPrompt();
+
+  // Decision panel
+  const m = getCurrentModule();
+  const decPanel = document.getElementById('decision-panel');
+  if (m && m.status === 'needs_decision') {
+    decPanel.classList.add('open');
+  } else {
+    decPanel.classList.remove('open');
+  }
+
+  // Left spec
+  const body = document.getElementById('spec-body');
+  body.innerHTML = '';
+
+  // Goal
+  const gf = makeField('GOAL', spec.goal, spec.goal ? 'goal' : null);
+  body.appendChild(gf);
+
+  // Constraints
+  if (spec.constraints.length) {
+    const cf = makeField('CONSTRAINTS', spec.constraints.join('\n'), 'constraints');
+    body.appendChild(cf);
+  }
+
+  // Modules
+  if (spec.modules.length) {
+    const lbl = document.createElement('div');
+    lbl.className = 'sf-label'; lbl.style.marginTop = '4px';
+    lbl.textContent = `MODULES (${spec.modules.filter(m=>m.status==='locked').length}/${spec.modules.length} LOCKED)`;
+    body.appendChild(lbl);
+
+    spec.modules.forEach(mod => {
+      const card = document.createElement('div');
+      card.className = `mod-item ${mod.id === spec.current_module ? 'active' : ''} ${mod.status}`;
+      const budget = 2 - mod.attempts;
+      const budgetColor = budget <= 0 ? 'var(--red)' : budget === 1 ? 'var(--needs)' : 'var(--dim)';
+      const budgetHTML = mod.attempts > 0
+        ? `<div class="mod-desc" style="color:${budgetColor}">錯誤預算：剩 ${Math.max(0,budget)} 次</div>`
+        : '';
+
+      // 候選方案：蒸餾中顯示「待蒸餾」，已完成顯示可折疊查看
+      let candidatesHTML = '';
+      if (mod.candidates && mod.status === 'distilling') {
+        candidatesHTML = `<div class="mod-desc" style="color:var(--needs)">候選方案：${mod.candidates.length} 個待蒸餾</div>`;
+      } else if (mod.candidates && mod.candidates.length) {
+        const uid = `cand-${mod.id}`;
+        const rows = mod.candidates.map(c => `
+          <div style="margin-top:5px;padding:4px 6px;border:1px solid var(--border2);border-radius:2px;background:var(--bg);">
+            <div style="font-size:8px;color:var(--A);letter-spacing:1px;margin-bottom:2px;">[${esc(c.id)}]</div>
+            <div style="font-size:8px;color:var(--text);line-height:1.5;">${esc((c.design||'').slice(0,120))}</div>
+            <div style="font-size:7px;color:var(--mid);margin-top:2px;">${esc((c.tradeoff||'').slice(0,80))}</div>
+          </div>`).join('');
+        candidatesHTML = `
+          <div style="margin-top:3px;">
+            <div style="font-size:7px;color:var(--dim);letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:4px;"
+              onclick="const el=document.getElementById('${uid}');const arr=this.querySelector('.cand-arr');el.style.display=el.style.display==='none'?'block':'none';arr.textContent=el.style.display==='none'?'▶':'▼';">
+              <span class="cand-arr">▶</span> DEEP 候選方案（${mod.candidates.length} 個）
+            </div>
+            <div id="${uid}" style="display:none;margin-top:3px;">${rows}</div>
+          </div>`;
+      }
+
+      card.innerHTML = `
+        <div class="mod-top">
+          <span class="mod-id">${esc(mod.id)}</span>
+          <span class="mod-tag ${mod.status}">${mod.status.replace('_',' ').toUpperCase()}</span>
+        </div>
+        <div class="mod-desc">${esc(mod.description.split('\n')[0].slice(0,50))}</div>
+        ${candidatesHTML}
+        ${budgetHTML}
+      `;
+      body.appendChild(card);
+    });
+  }
+
+  // Final output
+  if (spec.final) {
+    const ff = makeField('FINAL OUTPUT', spec.final.final_output || '');
+    body.appendChild(ff);
+    if (spec.final.risks?.length) body.appendChild(makeField('RISKS', spec.final.risks.join('\n')));
+    if (spec.final.gaps?.length) body.appendChild(makeField('GAPS', spec.final.gaps.join('\n')));
+  }
+
+  // Status bar
+  document.getElementById('sb-status').textContent = spec.global_status.toUpperCase();
+  document.getElementById('sb-module').textContent = spec.current_module ? `MODULE: ${spec.current_module}` : '';
+  const locked = spec.modules.filter(m => m.status === 'locked').length;
+  document.getElementById('sb-progress').textContent = spec.modules.length ? `${locked}/${spec.modules.length}` : '';
+  // mode indicator in status bar
+  const modeEl = document.getElementById('sb-mode');
+  if (modeEl) { modeEl.textContent = mode === 'deep' ? '◆ DEEP' : '⚡ FAST'; modeEl.style.color = mode === 'deep' ? 'var(--needs)' : 'var(--A)'; }
+  // turn count
+  const turnsEl = document.getElementById('sb-turns');
+  if (turnsEl && spec._turn_count > 0) { turnsEl.textContent = `T:${spec._turn_count}`; }
+  // hint + stability
+  updateHint();
+  updateStabilityBar();
+}
+
+function makeField(label, value, editKey) {
+  const div = document.createElement('div');
+  div.className = 'sf';
+  const hasVal = value && value.trim();
+
+  if (editKey) {
+    // Editable field
+    div.innerHTML = `
+      <div class="sf-label">${label} <span class="sf-edit-hint">點擊編輯</span></div>
+      <div class="sf-val ${hasVal ? 'filled' : 'empty'} sf-editable"
+        contenteditable="true"
+        spellcheck="false"
+        data-key="${editKey}"
+        onblur="saveFieldEdit(this)"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.blur()}"
+      >${hasVal ? esc(value) : ''}</div>`;
+  } else {
+    div.innerHTML = `<div class="sf-label">${label}</div><div class="sf-val ${hasVal ? 'filled' : 'empty'}">${hasVal ? esc(value) : '—'}</div>`;
+  }
+  return div;
+}
+
+function saveFieldEdit(el) {
+  const key = el.dataset.key;
+  const val = el.textContent.trim();
+  if (key === 'goal') {
+    spec.goal = val;
+    el.className = `sf-val ${val ? 'filled' : 'empty'} sf-editable`;
+  } else if (key === 'constraints') {
+    spec.constraints = val ? val.split('\n').map(s => s.trim()).filter(Boolean) : [];
+  }
+  render();
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ══════════════════════════════
+// IMPORT / EXPORT / RESET
+// ══════════════════════════════
+function doImport() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const r = new FileReader();
+    r.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        spec = data;
+        render(); toast('✓ 載入成功');
+      } catch { toast('✗ JSON 解析失敗'); }
+    };
+    r.readAsText(file);
+  };
+  input.click();
+}
+
+function doExport() {
+  const json = JSON.stringify(spec, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const slug = (spec.goal || 'spec').replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '-').slice(0, 24);
+  a.href = url; a.download = `${slug}-v5.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('✓ 已匯出');
+}
+
+function doReset() {
+  if (!confirm('確定重置？')) return;
+  spec = { goal: '', constraints: [], modules: [], current_module: null, global_status: 'init', user_input: '', _turn_count: 0, _stability: null };
+  clearResponse();
+  render();
+}
+
+// Drag & drop JSON
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (!file || !file.name.endsWith('.json')) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try { spec = JSON.parse(ev.target.result); render(); toast('✓ 載入成功'); }
+    catch { toast('✗ JSON 解析失敗'); }
+  };
+  r.readAsText(file);
+});
+
+// ══════════════════════════════
+// INIT
+// ══════════════════════════════
+render();
+</script>
+</body>
+</html>
