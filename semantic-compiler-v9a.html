@@ -1,0 +1,2020 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Semantic Compiler v9.0</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Noto+Sans+TC:wght@300;400;500&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  --bg:     #07090f;
+  --bg2:    #0c0f1a;
+  --bg3:    #111626;
+  --border: #181e30;
+  --b2:     #202840;
+  --text:   #8a9cc0;
+  --dim:    #303d5a;
+  --mid:    #4a5e84;
+  --white:  #d4e2f8;
+  --A:      #3eb8f0;
+  --C:      #3ddc84;
+  --gold:   #f0c040;
+  --red:    #f07070;
+  --orange: #fb923c;
+  --mono:   'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --sans:   'Noto Sans TC', sans-serif;
+  --display:'Syne', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  opacity: 0.4;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(62,184,240,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(62,184,240,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+#wrap {
+  position: relative; z-index: 1;
+  max-width: 680px; margin: 0 auto;
+  padding: 48px 24px 80px;
+  display: flex; flex-direction: column; gap: 48px;
+}
+
+/* ── HEADER ── */
+#header { display: flex; flex-direction: column; gap: 12px; }
+.brand-row { display: flex; align-items: baseline; gap: 12px; }
+.brand-name {
+  font-family: var(--display);
+  font-size: 28px; font-weight: 800;
+  color: var(--white); letter-spacing: -0.5px;
+}
+.brand-name em { color: var(--A); font-style: normal; }
+.brand-ver {
+  font-family: var(--mono);
+  font-size: 9px; color: var(--dim);
+  letter-spacing: 3px;
+  border: 1px solid var(--border);
+  border-radius: 2px; padding: 2px 7px;
+}
+.brand-desc { font-size: 12px; color: var(--mid); letter-spacing: 0.5px; line-height: 1.6; }
+.divider { height: 1px; background: linear-gradient(90deg, var(--border) 0%, transparent 100%); }
+
+/* ── SECTION LABEL ── */
+.section-label {
+  font-family: var(--mono);
+  font-size: 8px; letter-spacing: 3px; color: var(--dim);
+}
+
+/* ── MODE CARDS ── */
+#mode-section { display: flex; flex-direction: column; gap: 16px; }
+#mode-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+.mode-card {
+  position: relative;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+  overflow: hidden;
+}
+.mode-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: transparent; transition: background 0.2s;
+}
+.mode-card:hover { border-color: var(--b2); background: var(--bg3); }
+.mode-card.active { border-color: var(--A); background: rgba(62,184,240,0.04); }
+.mode-card.active::before { background: var(--A); }
+.mode-card.active-gold { border-color: var(--gold); background: rgba(240,192,64,0.04); }
+.mode-card.active-gold::before { background: var(--gold); }
+
+.mode-icon { font-size: 20px; margin-bottom: 10px; display: block; }
+.mode-title {
+  font-family: var(--display);
+  font-size: 15px; font-weight: 700;
+  color: var(--white); margin-bottom: 6px;
+}
+.mode-sub { font-size: 11px; color: var(--mid); line-height: 1.55; }
+.mode-tag {
+  position: absolute; top: 14px; right: 14px;
+  font-family: var(--mono); font-size: 7px; letter-spacing: 1.5px;
+  padding: 2px 6px; border-radius: 2px;
+}
+.tag-blue { color: var(--A); border: 1px solid rgba(62,184,240,0.3); background: rgba(62,184,240,0.06); }
+.tag-gold { color: var(--gold); border: 1px solid rgba(240,192,64,0.3); background: rgba(240,192,64,0.06); }
+.tag-green { color: var(--C); border: 1px solid rgba(61,220,132,0.3); background: rgba(61,220,132,0.06); }
+
+.mode-card.active-green { border-color: var(--C); background: rgba(61,220,132,0.04); }
+.mode-card.active-green::before { background: var(--C); }
+.mode-card.active-green .step-num { color: var(--C); }
+
+.mode-steps { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; }
+.mode-step {
+  display: flex; align-items: flex-start; gap: 7px;
+  font-family: var(--mono); font-size: 9px; color: var(--dim); line-height: 1.5;
+}
+.step-num { color: var(--A); flex-shrink: 0; }
+.mode-card.active-gold .step-num { color: var(--gold); }
+
+/* ── SPEC INPUT (fast 模式用) ── */
+#spec-section { display: flex; flex-direction: column; gap: 12px; }
+.spec-input-wrap { display: flex; flex-direction: column; gap: 8px; }
+.spec-textarea {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--white); padding: 14px 16px;
+  font-family: var(--mono); font-size: 10px; line-height: 1.65;
+  outline: none; resize: none; width: 100%;
+  min-height: 90px;
+  transition: border-color 0.2s;
+}
+.spec-textarea:focus { border-color: var(--mid); }
+.spec-textarea::placeholder { color: var(--dim); }
+.spec-hint { font-family: var(--mono); font-size: 8px; color: var(--dim); letter-spacing: 0.5px; }
+
+/* JSON inject (可折疊) */
+#inject-toggle {
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer; user-select: none; width: fit-content;
+}
+.inject-label { font-family: var(--mono); font-size: 8px; letter-spacing: 2px; color: var(--dim); }
+.inject-arrow { font-family: var(--mono); font-size: 9px; color: var(--dim); transition: transform 0.2s; }
+.inject-arrow.open { transform: rotate(90deg); }
+#inject-area { display: none; flex-direction: column; gap: 8px; margin-top: 4px; }
+#inject-area.open { display: flex; }
+#inject-status { font-family: var(--mono); font-size: 8px; color: var(--dim); }
+#inject-status.ok { color: var(--C); }
+#inject-status.err { color: var(--red); }
+
+/* ── ACTION BUTTON ── */
+#action-section { display: flex; flex-direction: column; gap: 12px; }
+
+#copy-btn {
+  width: 100%; padding: 18px 24px;
+  background: var(--A);
+  border: none; border-radius: 6px;
+  font-family: var(--display);
+  font-size: 15px; font-weight: 700;
+  color: #040810;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  letter-spacing: 0.3px;
+  position: relative; overflow: hidden;
+}
+#copy-btn::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+#copy-btn:hover { background: #5ccaff; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(62,184,240,0.25); }
+#copy-btn:active { transform: translateY(0); }
+#copy-btn.gold-mode { background: var(--gold); }
+#copy-btn.gold-mode:hover { background: #f5d060; box-shadow: 0 8px 24px rgba(240,192,64,0.25); }
+#copy-btn.copied { background: var(--C) !important; box-shadow: 0 8px 24px rgba(61,220,132,0.25) !important; }
+
+.btn-icon { font-size: 18px; }
+.btn-label { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.btn-title { font-size: 14px; }
+.btn-hint { font-family: var(--mono); font-size: 9px; font-weight: 400; opacity: 0.65; letter-spacing: 0.5px; }
+
+/* ── EXTRA BUTTONS ── */
+.extra-btns { display: flex; gap: 8px; }
+.xbtn {
+  flex: 1; padding: 10px 14px;
+  background: none; border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--mono); font-size: 8px; letter-spacing: 1.5px;
+  color: var(--dim); cursor: pointer;
+  transition: all 0.15s;
+}
+.xbtn:hover { color: var(--mid); border-color: var(--b2); }
+.xbtn.green { color: var(--C); border-color: rgba(61,220,132,0.25); }
+.xbtn.green:hover { background: rgba(61,220,132,0.04); }
+.xbtn.purple { color: #a78bfa; border-color: rgba(167,139,250,0.25); }
+.xbtn.purple:hover { background: rgba(167,139,250,0.04); }
+
+/* ── FLOW HINT ── */
+#flow-hint {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.flow-title { font-family: var(--mono); font-size: 8px; letter-spacing: 2.5px; color: var(--dim); }
+.flow-steps { display: flex; flex-direction: column; gap: 7px; }
+.flow-step { display: flex; align-items: flex-start; gap: 12px; font-size: 11px; color: var(--mid); line-height: 1.5; }
+.flow-n {
+  font-family: var(--mono); font-size: 9px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--bg3); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; color: var(--A); margin-top: 1px;
+}
+.flow-n.gold { color: var(--gold); border-color: rgba(240,192,64,0.25); }
+.flow-n.green { color: var(--C); border-color: rgba(61,220,132,0.25); }
+.flow-step strong { color: var(--white); font-weight: 500; }
+
+/* ── STATE PANEL (fast 模式下顯示當前進度) ── */
+#state-section { display: flex; flex-direction: column; gap: 12px; }
+#state-panel {
+  display: none;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 16px 18px;
+  flex-direction: column; gap: 12px;
+}
+#state-panel.open { display: flex; }
+
+.state-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.state-field { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.state-key { font-family: var(--mono); font-size: 7px; letter-spacing: 2px; color: var(--dim); }
+.state-val { font-family: var(--mono); font-size: 10px; color: var(--text); line-height: 1.5; }
+.state-val.highlight { color: var(--white); }
+
+#modules-list { display: flex; flex-direction: column; gap: 6px; }
+.mod-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 4px; transition: border-color 0.2s;
+}
+.mod-row.active { border-color: rgba(62,184,240,0.3); }
+.mod-row.done { border-color: rgba(61,220,132,0.2); }
+.mod-row.warn { border-color: rgba(251,146,60,0.3); }
+.mod-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--border); flex-shrink: 0;
+}
+.mod-dot.active { background: var(--A); }
+.mod-dot.done { background: var(--C); }
+.mod-dot.warn { background: var(--orange); }
+.mod-id-text { font-family: var(--mono); font-size: 9px; color: var(--text); flex: 1; }
+.mod-status-tag {
+  font-family: var(--mono); font-size: 7px; letter-spacing: 1px;
+  padding: 1px 6px; border-radius: 2px;
+}
+.tag-init      { color: var(--dim);    background: rgba(48,61,90,0.4); }
+.tag-building  { color: var(--A);      background: rgba(62,184,240,0.1); }
+.tag-validating{ color: var(--gold);   background: rgba(240,192,64,0.1); }
+.tag-fixing    { color: var(--orange); background: rgba(251,146,60,0.1); }
+.tag-done      { color: var(--C);      background: rgba(61,220,132,0.1); }
+.tag-blocked   { color: var(--red);    background: rgba(240,112,112,0.1); }
+
+/* ── SCHEMA ── */
+#schema-section { display: flex; flex-direction: column; gap: 12px; }
+.schema-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+.schema-toggle-label { font-family: var(--mono); font-size: 8px; letter-spacing: 2px; color: var(--dim); }
+.schema-arrow { font-family: var(--mono); font-size: 9px; color: var(--dim); transition: transform 0.2s; }
+.schema-arrow.open { transform: rotate(90deg); }
+#schema-body {
+  display: none;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 4px; padding: 14px 16px;
+  font-family: var(--mono); font-size: 9px; color: var(--text);
+  line-height: 1.7; white-space: pre-wrap; overflow-x: auto;
+}
+#schema-body.open { display: block; }
+
+/* ── FOOTER ── */
+#footer {
+  text-align: center;
+  font-family: var(--mono); font-size: 8px; letter-spacing: 2px; color: var(--dim);
+}
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  background: var(--bg3); border: 1px solid var(--b2);
+  border-radius: 4px; padding: 9px 20px;
+  font-family: var(--mono); font-size: 10px; color: var(--white);
+  opacity: 0; transition: opacity 0.2s; pointer-events: none;
+  z-index: 999; white-space: nowrap;
+}
+#toast.show { opacity: 1; }
+
+@media (max-width: 600px) {
+  #mode-cards { grid-template-columns: 1fr; }
+  .brand-name { font-size: 22px; }
+  #wrap { padding: 32px 16px 60px; }
+  .extra-btns { flex-wrap: wrap; }
+}
+@media (min-width: 601px) and (max-width: 760px) {
+  #mode-cards { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     隱藏規格文件（AI 讀取用）
+     ══════════════════════════════════════════ -->
+<div id="spec-doc" style="display:none" aria-hidden="true">
+<pre id="spec-content">
+=== SEMANTIC COMPILER v9.0 SPEC ===
+
+你是 Semantic Compiler v9.0 執行器。
+
+【三種模式】
+
+1. DISCUSS 模式（探索）
+   用途：方向未定時，透過來回對話收斂目標
+   特點：
+   - AI 可以提問、發散、提出假設，不受格式限制
+   - 每輪對話後，AI 在回覆末尾附上一份 Discussion Snapshot JSON
+   - 討論結束後，輸出完整 Discussion JSON，作為 INIT 的輸入
+   - 觸發：選擇 Discuss 模式，複製指令貼給 AI，開始自由對話
+
+2. FAST 模式（預設）
+   流程：INIT → BUILD → VALIDATE → (FIX) → DONE
+   特點：直接生成，2~4 輪完成
+
+3. DEEP 模式
+   流程：INIT → BUILD_CANDIDATES → DISTILL → VALIDATE → (FIX) → DONE
+   特點：多候選蒸餾，品質更高
+
+【DISCUSS 模式詳細規則】
+
+角色：引導者，不是回應者。
+
+階段一：健壯性確認（probing）
+- 讀入使用者描述
+- 找出最關鍵的一個缺口（用戶端？技術限制？範圍？前提假設？）
+- 只問那一個問題，等使用者回答
+- 下一輪再找下一個缺口
+- 直到基本前提都確認，進入階段二
+
+階段二：方向探索（exploring）
+- 可自由提出想法、假設、可能的方向
+- 可指出矛盾或更好的替代
+- 用對話語氣，不需要每句話都正式
+- 可以發散，但要標明是假設或建議
+
+階段三：收斂確認（converging）
+- 整理已討論的方向
+- 確認採用哪些、排除哪些
+- 等待使用者說結束
+
+每輪末尾必附 Snapshot（包在 ```json 內）：
+{
+  "_snapshot": true,
+  "_turn": N,
+  "phase": "probing | exploring | converging",
+  "tentative_goal": "目前最可能的目標，未確定留空字串",
+  "confirmed": ["已確認的前提或限制"],
+  "open_questions": ["尚未確認的關鍵問題"],
+  "directions": [
+    {"id": "D1", "label": "方向名稱", "summary": "一句話", "status": "active | parked | eliminated"}
+  ]
+}
+
+使用者說「結束」「可以了」「輸出」時，輸出完整 Discussion JSON：
+{
+  "_discussion": true,
+  "_turns": N,
+  "goal": "確認的目標",
+  "context": "背景與前提說明",
+  "constraints": ["已確認的限制"],
+  "open_questions": ["仍未解決的問題"],
+  "directions": [
+    {"id": "D1", "label": "...", "summary": "...", "adopted": true, "reason": "原因"},
+    {"id": "D2", "label": "...", "summary": "...", "adopted": false, "reason": "排除原因"}
+  ],
+  "recommended_mode": "fast | deep",
+  "notes": "給後續 INIT 的補充說明"
+}
+
+【FAST / DEEP 模式步驟格式】
+
+INIT：
+{
+  "_turn": 1,
+  "goal": "一句話描述目標",
+  "constraints": ["限制"],
+  "modules": [{"id": "snake_case", "desc": "說明"}]
+}
+
+BUILD（Fast）：
+{
+  "_turn": N,
+  "module": "module_id",
+  "output": "完整可執行設計",
+  "issues": [],
+  "confidence": 0.85
+}
+
+BUILD_CANDIDATES（Deep）：
+{
+  "_turn": N,
+  "module": "module_id",
+  "candidates": [
+    {"id": "A", "design": "方案A", "tradeoff": "優缺點"},
+    {"id": "B", "design": "方案B", "tradeoff": "優缺點"},
+    {"id": "C", "design": "方案C", "tradeoff": "優缺點"}
+  ]
+}
+
+DISTILL（Deep）：
+{
+  "_turn": N,
+  "module": "module_id",
+  "output": "蒸餾後設計",
+  "issues": [],
+  "confidence": 0.9,
+  "rationale": "收斂理由"
+}
+
+FIX：
+{
+  "_turn": N,
+  "module": "module_id",
+  "output": "修正後設計",
+  "issues": []
+}
+
+DONE：
+{
+  "_turn": N,
+  "summary": "整合摘要",
+  "risks": ["風險，最多3個"],
+  "gaps": ["缺口，最多2個"]
+}
+
+【模組限制（FAST/DEEP）】
+- 最多 4 個模組
+- issues 只列「會壞掉」的問題，不是優化建議
+- confidence ≥ 0.8 即 pass
+
+=== END SPEC ===
+</pre>
+</div>
+
+<div id="wrap">
+
+  <!-- HEADER -->
+  <div id="header">
+    <div class="brand-row">
+      <span class="brand-name"><em>Semantic</em> Compiler</span>
+      <span class="brand-ver">v9.0</span>
+    </div>
+    <p class="brand-desc">上傳此文件給 AI，選擇模式，複製指令，開始編譯。Discuss 先探索方向，Fast / Deep 正式編譯。</p>
+    <div class="divider"></div>
+  </div>
+
+  <!-- MODE SELECT -->
+  <div id="mode-section">
+    <div class="section-label">選擇模式</div>
+    <div id="mode-cards">
+
+      <div class="mode-card active" id="card-fast" onclick="selectMode('fast')">
+        <span class="mode-tag tag-blue">FAST</span>
+        <span class="mode-icon">⚡</span>
+        <div class="mode-title">Fast</div>
+        <div class="mode-sub">直接生成 → 驗證 → 完成，2~4 輪</div>
+        <div class="mode-steps">
+          <div class="mode-step"><span class="step-num">1</span>INIT：分析需求</div>
+          <div class="mode-step"><span class="step-num">2</span>BUILD：直接生成</div>
+          <div class="mode-step"><span class="step-num">3</span>VALIDATE + FIX</div>
+          <div class="mode-step"><span class="step-num">4</span>DONE</div>
+        </div>
+      </div>
+
+      <div class="mode-card" id="card-deep" onclick="selectMode('deep')">
+        <span class="mode-tag tag-gold">DEEP</span>
+        <span class="mode-icon">◆</span>
+        <div class="mode-title">Deep</div>
+        <div class="mode-sub">多候選 → 蒸餾 → 驗證，更高品質</div>
+        <div class="mode-steps">
+          <div class="mode-step"><span class="step-num">1</span>INIT：分析需求</div>
+          <div class="mode-step"><span class="step-num">2</span>3 個候選方案</div>
+          <div class="mode-step"><span class="step-num">3</span>DISTILL 蒸餾</div>
+          <div class="mode-step"><span class="step-num">4</span>VALIDATE → DONE</div>
+        </div>
+      </div>
+
+      <div class="mode-card" id="card-discuss" onclick="selectMode('discuss')">
+        <span class="mode-tag tag-green">DISCUSS</span>
+        <span class="mode-icon">◎</span>
+        <div class="mode-title">Discuss</div>
+        <div class="mode-sub">方向未定時，先對話再編譯</div>
+        <div class="mode-steps">
+          <div class="mode-step"><span class="step-num">1</span>自由對話探索</div>
+          <div class="mode-step"><span class="step-num">2</span>每輪附 Snapshot</div>
+          <div class="mode-step"><span class="step-num">3</span>輸出 Discussion JSON</div>
+          <div class="mode-step"><span class="step-num">4</span>接回 Fast / Deep</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SPEC INPUT -->
+  <div id="spec-section">
+    <div class="section-label">需求輸入（可選）</div>
+    <div class="spec-input-wrap">
+      <textarea class="spec-textarea" id="user-req"
+        placeholder="貼上需求文字… 若有既有 Spec JSON 請點下方展開注入"
+        oninput="onReqChange()"></textarea>
+      <div class="spec-hint" id="req-hint">—</div>
+
+      <div id="inject-toggle" onclick="toggleInject()">
+        <span class="inject-label">注入既有 SPEC JSON</span>
+        <span class="inject-arrow" id="inject-arrow">▶</span>
+      </div>
+      <div id="inject-area">
+        <textarea class="spec-textarea" id="json-input"
+          placeholder="貼上既有 Spec JSON…"
+          style="min-height:70px"
+          oninput="onJsonChange()"></textarea>
+        <div id="inject-status">—</div>
+        <button class="xbtn" style="font-size:8px;padding:7px 0;" onclick="loadFromInject()">載入並覆蓋 Spec</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DISCUSS TOPIC INPUT (只在 discuss 模式顯示) -->
+  <div id="discuss-section" style="display:none; flex-direction:column; gap:12px;">
+    <div class="section-label">討論主題（可選）</div>
+    <div class="spec-input-wrap">
+      <textarea class="spec-textarea" id="discuss-topic"
+        placeholder="簡單描述你想探索的方向，或留空讓 AI 引導…&#10;&#10;例：我想做一個回合制戰棋遊戲，但不確定要用哪種格局設計"
+        style="min-height:80px"></textarea>
+      <div class="spec-hint" id="discuss-hint" style="color:var(--C);font-size:9px;line-height:1.6;">
+        ◎ AI 會自由對話探索方向，每輪附上 Snapshot JSON 記錄進展。<br>
+        討論結束後輸出 Discussion JSON，可直接作為 Fast / Deep 的 INIT 輸入。
+      </div>
+    </div>
+  </div>
+
+  
+  <div id="action-section">
+    <button id="copy-btn" onclick="copyInstruction()">
+      <span class="btn-icon">⬆</span>
+      <span class="btn-label">
+        <span class="btn-title" id="btn-title">複製 Fast 指令</span>
+        <span class="btn-hint" id="btn-hint">貼給 AI，開始編譯</span>
+      </span>
+    </button>
+
+    <div id="flow-hint">
+      <div class="flow-title">使用流程</div>
+      <div class="flow-steps" id="flow-steps"></div>
+    </div>
+
+    <div class="extra-btns">
+      <button class="xbtn" onclick="doImport()">載入 JSON</button>
+      <button class="xbtn green" onclick="doExport()">匯出 JSON</button>
+      <button class="xbtn" style="border-color:rgba(61,220,132,.3);color:var(--C);" onclick="exportForAggregator()">📤 匯出給 Aggregator</button>
+      <button class="xbtn" onclick="doReset()">重置</button>
+    </div>
+  </div>
+
+  <!-- STATE PANEL (Fast/Deep) -->
+  <div id="state-section">
+    <div class="section-label">編譯狀態</div>
+    <div id="state-panel">
+      <div class="state-row">
+        <div class="state-field">
+          <div class="state-key">GOAL</div>
+          <div class="state-val highlight" id="sv-goal">—</div>
+        </div>
+        <div class="state-field" style="flex:0 0 auto;max-width:140px">
+          <div class="state-key">STATUS</div>
+          <div class="state-val" id="sv-status">—</div>
+        </div>
+      </div>
+      <div class="state-field">
+        <div class="state-key">MODULES</div>
+        <div id="modules-list"></div>
+      </div>
+      <div class="state-field" id="sv-final-wrap" style="display:none">
+        <div class="state-key">FINAL OUTPUT</div>
+        <div class="state-val" id="sv-final" style="color:var(--C)"></div>
+      </div>
+    </div>
+    <!-- AI 回覆輸入（Fast/Deep 模式） -->
+    <div id="response-input-wrap" style="display:flex;flex-direction:column;gap:8px;">
+      <textarea class="spec-textarea" id="ai-response"
+        placeholder="貼入 AI 的 JSON 回覆，按「送出」更新狀態…"
+        style="min-height:70px"></textarea>
+      <button class="xbtn green" onclick="submitAIResponse()" style="width:100%;padding:10px 0;font-size:9px;letter-spacing:2px;">
+        ▶ 送出 AI 回覆
+      </button>
+    </div>
+  </div>
+
+  <!-- DISCUSS PANEL -->
+  <div id="discuss-state-section" style="display:none;flex-direction:column;gap:12px;">
+    <div class="section-label">討論進度</div>
+    <div id="discuss-panel" style="
+      background:var(--bg2);border:1px solid var(--border);
+      border-radius:6px;padding:16px 18px;
+      display:flex;flex-direction:column;gap:14px;">
+
+      <!-- Phase + Turn -->
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div class="state-key">PHASE</div>
+          <div id="dp-phase" style="font-family:var(--mono);font-size:10px;color:var(--C);">—</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+          <div class="state-key">TURN</div>
+          <div id="dp-turn" style="font-family:var(--mono);font-size:10px;color:var(--text);">—</div>
+        </div>
+      </div>
+
+      <!-- Tentative goal -->
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div class="state-key">TENTATIVE GOAL</div>
+        <div id="dp-goal" style="font-size:11px;color:var(--white);line-height:1.55;">—</div>
+      </div>
+
+      <!-- Confirmed -->
+      <div id="dp-confirmed-wrap" style="display:none;flex-direction:column;gap:6px;">
+        <div class="state-key">CONFIRMED</div>
+        <div id="dp-confirmed" style="display:flex;flex-direction:column;gap:4px;"></div>
+      </div>
+
+      <!-- Open questions -->
+      <div id="dp-oq-wrap" style="display:none;flex-direction:column;gap:6px;">
+        <div class="state-key">OPEN QUESTIONS</div>
+        <div id="dp-oq" style="display:flex;flex-direction:column;gap:4px;"></div>
+      </div>
+
+      <!-- Directions -->
+      <div id="dp-dir-wrap" style="display:none;flex-direction:column;gap:6px;">
+        <div class="state-key">DIRECTIONS</div>
+        <div id="dp-directions" style="display:flex;flex-direction:column;gap:6px;"></div>
+      </div>
+
+      <!-- Done state -->
+      <div id="dp-done" style="display:none;padding:10px 12px;
+        background:rgba(61,220,132,0.06);border:1px solid rgba(61,220,132,0.25);
+        border-radius:4px;font-size:11px;color:var(--C);line-height:1.55;"></div>
+    </div>
+
+    <!-- Action: paste snapshot or transfer to INIT -->
+    <div class="extra-btns">
+      <button class="xbtn" style="color:var(--C);border-color:rgba(61,220,132,0.25);"
+        onclick="pasteSnapshot()">貼入 Snapshot / Discussion JSON</button>
+      <button class="xbtn green" onclick="transferToInit()" id="btn-transfer" style="display:none">
+        轉入 Fast/Deep →
+      </button>
+      <button class="xbtn" onclick="doExportDiscuss()" id="btn-export-discuss" style="display:none">
+        匯出 JSON
+      </button>
+    </div>
+    <div style="font-family:var(--mono);font-size:8px;color:var(--dim);line-height:1.6;" id="dp-hint">
+      將 AI 每輪輸出的 Snapshot 貼入，追蹤討論進度。
+    </div>
+  </div>
+
+  <!-- SCHEMA -->
+  <div id="schema-section">
+    <div class="schema-toggle" onclick="toggleSchema()">
+      <span class="schema-toggle-label">輸出格式 · JSON Schema</span>
+      <span class="schema-arrow" id="schema-arrow">▶</span>
+    </div>
+    <pre id="schema-body">── DISCUSS 模式輸出 ──
+
+每輪末尾 Snapshot：
+{
+  "_snapshot": true,
+  "_turn": N,
+  "phase": "probing | exploring | converging",
+  "tentative_goal": "目前最可能的目標（可為空）",
+  "confirmed": ["已確認的前提或限制"],
+  "open_questions": ["未確定的問題"],
+  "directions": [
+    {"id": "D1", "label": "...", "summary": "...", "status": "active | parked | eliminated"}
+  ]
+}
+
+討論結束 Discussion JSON：
+{
+  "_discussion": true,
+  "_turns": N,
+  "goal": "確認的目標",
+  "context": "背景說明",
+  "constraints": ["確認的限制"],
+  "open_questions": ["仍未解決的問題"],
+  "directions": [
+    {"id": "D1", "label": "...", "summary": "...", "adopted": true, "reason": "原因"}
+  ],
+  "recommended_mode": "fast | deep",
+  "notes": "給 INIT 的補充說明"
+}
+
+── FAST / DEEP 模式輸出 ──
+
+Spec JSON：
+{
+  "goal": "string",
+  "constraints": ["string"],
+  "modules": [
+    {
+      "id": "snake_case",
+      "desc": "說明",
+      "status": "init | building | validating | fixing | done | blocked",
+      "output": "string | null",
+      "issues": ["string"],
+      "confidence": 0.0~1.0,
+      "attempts": 0
+    }
+  ],
+  "global_status": "init | building | done",
+  "final": { "summary": "string", "risks": [], "gaps": [] },
+  "_turn": N,
+  "_mode": "fast | deep"
+}</pre>
+  </div>
+
+  <div id="footer">SEMANTIC COMPILER · v9.0 · Discuss + Fast + Deep · 無後端</div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+let currentMode = 'fast';
+
+let spec = {
+  goal: '',
+  constraints: [],
+  modules: [],
+  global_status: 'init',
+  final: null,
+  _turn: 0,
+  _mode: 'fast'
+};
+
+// Discuss 模式獨立狀態（不混入 spec）
+let discuss = {
+  active: false,
+  snapshots: [],   // 每輪 Snapshot 歷史
+  final: null,     // Discussion JSON（結束時填入）
+  _turns: 0
+};
+
+// ── EVENT LAYER（append-only，永不直接修改）──
+let events = [];
+let _evtCounter = 0;
+const ALLOWED_TYPES = ['proposal', 'decision', 'question', 'insight', 'task'];
+
+// ══════════════════════════════════════════════
+// JSON EXTRACTION (容錯)
+// ══════════════════════════════════════════════
+function extractJSON(text) {
+  if (!text || !text.trim()) return null;
+  try { return JSON.parse(text.trim()); } catch {}
+  const objMatch = text.match(/\{[\s\S]*\}/);
+  const arrMatch = text.match(/\[[\s\S]*\]/);
+  let candidate = null;
+  if (objMatch && arrMatch) {
+    candidate = text.indexOf('[') < text.indexOf('{') ? arrMatch[0] : objMatch[0];
+  } else {
+    candidate = objMatch?.[0] || arrMatch?.[0] || null;
+  }
+  if (!candidate) return null;
+  let s = candidate;
+  s = s.replace(/,(\s*[}\]])/g, '$1');
+  s = s.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+  s = s.replace(/:\s*'([^']*)'/g, ': "$1"');
+  try { return JSON.parse(s); } catch { return null; }
+}
+
+// ══════════════════════════════════════════════
+// JSON_START / JSON_END 標籤剝離
+// ══════════════════════════════════════════════
+function stripTags(raw) {
+  const m = raw.match(/JSON_START\s*([\s\S]*?)\s*JSON_END/);
+  return m ? m[1].trim() : raw;
+}
+
+// ══════════════════════════════════════════════
+// EVENT LAYER
+// ══════════════════════════════════════════════
+function validateEvent(e) {
+  return (
+    ALLOWED_TYPES.includes(e.type) &&
+    typeof e.module === 'string' && e.module.length > 0 &&
+    typeof e.content === 'string' && e.content.length > 0
+  );
+}
+
+// content hash（輕量去重，非密碼學用途）
+function _hashEvt(e) {
+  const raw = JSON.stringify({
+    t: e.type  || '',
+    m: e.module || '',
+    c: (e.content || '').slice(0, 80)
+  });
+  let h = 0;
+  for (let i = 0; i < raw.length; i++) h = (h * 31 + raw.charCodeAt(i)) >>> 0;
+  return h.toString(16);
+}
+
+function appendEvent(evtArray) {
+  // ── 先以既有 events 建立 ID 集合 ──────────────
+  const knownIds = new Set(events.map(e => e.id).filter(Boolean));
+
+  // ── Pass 1：補全整批 ID，讓同批次 refs 可互相引用 ──
+  const valid = [];
+  for (const e of evtArray) {
+    if (!validateEvent(e)) continue;
+    if (!e.id || e.id === 'auto' || e.id.startsWith('evt_[')) {
+      e.id = 'evt_' + Math.random().toString(16).slice(2, 10);
+    }
+    knownIds.add(e.id); // 先把整批 ID 都收進來（Bug 三修正）
+    valid.push(e);
+  }
+
+  // ── Pass 2：去重 + refs 清洗 + push ────────────
+  const existingHashes = new Set(events.map(_hashEvt));
+  for (const e of valid) {
+    // content hash 去重（Block 2）
+    const h = _hashEvt(e);
+    if (existingHashes.has(h)) {
+      console.warn('[appendEvent] 跳過重複 event：', e.id);
+      continue;
+    }
+    // refs 清洗：此時 knownIds 已含同批次全部 ID（Bug 三修正）
+    e.refs = (e.refs || []).filter(r => knownIds.has(r));
+    e.ts    = e.ts    ?? Date.now();
+    e.turn  = e.turn  ?? (spec._turn || 0);
+    e.origin = e.origin ?? null;
+    events.push(e);
+    existingHashes.add(h); // 防止同批次內重複
+  }
+
+  spec = devlogReducer(events, spec);
+  renderState();
+}
+
+// ══════════════════════════════════════════════
+// DEVLOG REDUCER（唯一 state builder）
+// ══════════════════════════════════════════════
+function devlogReducer(evts, currentSpec) {
+  const newSpec = JSON.parse(JSON.stringify(currentSpec));
+
+  // _root 虛擬模組（全局事件用，不顯示於 UI）
+  if (!newSpec.modules.find(m => m.id === '_root')) {
+    newSpec.modules.push({
+      id: '_root', desc: '', status: 'init',
+      output: null, issues: [], confidence: null, candidates: null, attempts: 0
+    });
+  }
+
+  // 重設計算欄位（保留 output / confidence 等執行狀態）
+  newSpec.modules.forEach(m => {
+    m.decisions      = m.decisions      || [];
+    m.open_questions = m.open_questions || [];
+    m._decisions_count = 0;
+    m._questions_count = 0;
+  });
+
+  evts.forEach(evt => {
+    // 命名空間保護：不存在的 module 丟棄
+    const mod = newSpec.modules.find(m => m.id === evt.module);
+    if (!mod) return;
+
+    switch (evt.type) {
+      case 'decision':
+        if (!mod.decisions.includes(evt.id)) {
+          mod.decisions.push(evt.id);
+          mod._decisions_count++;
+        }
+        // 有 refs 引用 question → 自動解除
+        mod.open_questions = mod.open_questions.filter(
+          qId => !(evt.refs || []).includes(qId)
+        );
+        break;
+
+      case 'question':
+        if (!mod.open_questions.includes(evt.id)) {
+          mod.open_questions.push(evt.id);
+          mod._questions_count++;
+        }
+        break;
+
+      case 'proposal':
+      case 'insight':
+      case 'task':
+        // 不影響狀態機，僅保留在 events[]
+        break;
+    }
+  });
+
+  // 狀態機規則（_root 不參與）
+  newSpec.modules.forEach(m => {
+    if (m.id === '_root') return;
+    if (m.status !== 'blocked') { // 人工標記的 blocked 不被 reducer 覆蓋
+      if (m._decisions_count > 0 && m.open_questions.length === 0) {
+        m.status = 'done';
+      } else if (m._decisions_count === 0 && m.open_questions.length === 0) {
+        m.status = 'pending';
+      } else {
+        m.status = 'designing';
+      }
+    }
+  });
+
+  // global_status 同步（排除 _root）
+  const realMods = newSpec.modules.filter(m => m.id !== '_root');
+  if (realMods.length > 0) {
+    const allDone = realMods.every(
+      m => m.status === 'done' || m.status === 'blocked'
+    );
+    newSpec.global_status = allDone ? 'done' : 'building';
+  }
+
+  return newSpec;
+}
+
+// ══════════════════════════════════════════════
+// VALIDATE（真實驗證層）
+// ══════════════════════════════════════════════
+function validateOutput(output, modId) {
+  if (!output) return { pass: false, error: 'output 為空' };
+
+  // JSON 驗證
+  const trimmed = output.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try { JSON.parse(trimmed); return { pass: true }; }
+    catch (e) { return { pass: false, error: `JSON 語法錯誤：${e.message}` }; }
+  }
+
+  // JS 語法驗證
+  if (/function|const |let |var |=>|class /.test(output)) {
+    try { new Function(output); return { pass: true }; }
+    catch (e) { return { pass: false, error: `JS 語法錯誤：${e.message}` }; }
+  }
+
+  // 結構驗證：確保有實質內容
+  if (output.trim().length < 10) return { pass: false, error: 'output 內容過短' };
+  return { pass: true };
+}
+
+// ══════════════════════════════════════════════
+// SPEC CONTENT
+// ══════════════════════════════════════════════
+const SPEC_TEXT = document.getElementById('spec-content').textContent;
+
+// ══════════════════════════════════════════════
+// PROMPT BUILDERS
+// ══════════════════════════════════════════════
+const CH = `[規則] 只輸出JSON，不要其他文字\n`;
+
+const PROMPTS = {
+
+  INIT_FAST: (req, jsonRaw) => {
+    if (jsonRaw && jsonRaw.trim()) {
+      return `${CH}你是語義編譯器（Fast 模式）。整合需求與既有 Spec JSON。
+
+規則：
+- JSON 為主體（Single Source of Truth）
+- 需求文字只補充缺失或修正錯誤
+- 模組數量：最多 4 個，超過需合併
+- 在內部比較至少 2 種方案，選最簡單可行的，禁止輸出比較過程
+
+需求補充：
+${req || '（無）'}
+
+既有 JSON：
+${jsonRaw}
+
+輸出 JSON：
+{
+  "_turn": 1,
+  "goal": "一句話描述目標",
+  "constraints": [],
+  "modules": [{"id": "snake_case", "desc": "說明"}]
+}`;
+    }
+    return `${CH}需求分析（Fast 模式）。
+
+規則：
+- 只提取目標與限制，不新增需求
+- 模組數量：3~4 個，最多 4 個
+- 在內部比較至少 2 種模組拆法，選最簡單可行的，禁止輸出比較過程
+
+需求：
+${req || '（請先輸入需求）'}
+
+輸出 JSON：
+{
+  "_turn": 1,
+  "goal": "一句話描述目標",
+  "constraints": ["限制1"],
+  "modules": [{"id": "snake_case", "desc": "一句話說明"}]
+}`;
+  },
+
+  INIT_DEEP: (req, jsonRaw) => `${CH}需求分析（Deep 模式）。
+
+規則：
+- 在內部比較至少 2 種方案（記錄在 _internal_compared），選最佳的
+- 模組數量：3~4 個，最多 4 個
+
+需求：
+${req || '（請先輸入需求）'}
+${jsonRaw ? `\n既有 JSON：\n${jsonRaw}` : ''}
+
+輸出 JSON：
+{
+  "_turn": 1,
+  "goal": "...",
+  "constraints": [],
+  "modules": [{"id": "snake_case", "desc": "說明"}],
+  "_internal_compared": ["方案A概述", "方案B概述"]
+}`,
+
+  BUILD_FAST: (goal, constraints, mod) =>
+`${CH}[角色：生成器] 直接產出最終結果，不評論，不建議替代方案
+
+目標：${goal}
+限制：${constraints.length ? constraints.join('、') : '無'}
+
+模組：${mod.id}
+說明：${mod.desc}
+
+規則：
+- 一次完成（可執行優先，≥80% 即可）
+- 不要分階段輸出
+- issues 只列「會壞掉」的問題（不是優化建議），沒有就給 []
+- confidence 設 0~1
+
+輸出 JSON：
+{
+  "_turn": ${(spec._turn || 0) + 1},
+  "module": "${mod.id}",
+  "output": "完整可執行內容",
+  "issues": [],
+  "confidence": 0.85
+}`,
+
+  BUILD_CANDIDATES: (goal, constraints, mod) =>
+`${CH}[角色：生成器，Deep 模式] 生成 3 個不同設計方向
+
+目標：${goal}
+限制：${constraints.length ? constraints.join('、') : '無'}
+
+模組：${mod.id}
+說明：${mod.desc}
+
+規則：
+- 每個方案 2~3 句話，核心差異要明確
+- 禁止評論哪個最好
+
+輸出 JSON：
+{
+  "_turn": ${(spec._turn || 0) + 1},
+  "module": "${mod.id}",
+  "candidates": [
+    {"id": "A", "design": "方案A", "tradeoff": "優缺點"},
+    {"id": "B", "design": "方案B", "tradeoff": "優缺點"},
+    {"id": "C", "design": "方案C", "tradeoff": "優缺點"}
+  ]
+}`,
+
+  DISTILL: (goal, mod) =>
+`${CH}[角色：蒸餾器] 從候選中提取最佳共性，輸出單一收斂版本
+
+目標：${goal}
+模組：${mod.id}
+
+候選方案：
+${(mod.candidates || []).map(c => `[${c.id}] ${c.design}\n取捨：${c.tradeoff}`).join('\n\n')}
+
+規則：
+- 找共性（保留），找衝突（選最符合目標的）
+- 去掉過度理想化的設計
+- 可執行度 ≥ 80% 立即停止
+
+輸出 JSON：
+{
+  "_turn": ${(spec._turn || 0) + 1},
+  "module": "${mod.id}",
+  "output": "蒸餾後最終設計",
+  "issues": [],
+  "confidence": 0.9,
+  "rationale": "一句話收斂理由"
+}`,
+
+  FIX: (goal, mod) =>
+`${CH}[角色：修正器] 只修正錯誤，不重寫，不新增功能
+
+目標：${goal}
+模組：${mod.id}
+
+必須修正的問題：
+${(mod.issues || []).map((i, n) => `${n+1}. ${i}`).join('\n')}
+
+原始輸出：
+${mod.output}
+
+規則：
+- 只修正上述問題，不可改變模組目標
+- 修正後 issues 必須為 []
+
+輸出 JSON：
+{
+  "_turn": ${(spec._turn || 0) + 1},
+  "module": "${mod.id}",
+  "output": "修正後完整設計",
+  "issues": []
+}`,
+
+  FINAL: (goal, modules) =>
+`${CH}[角色：整合員] 整合所有已完成模組，只能整合不能修改
+
+目標：${goal}
+
+已完成模組（${modules.filter(m=>m.status==='done').length} 個）：
+${modules.filter(m => m.status === 'done').map(m => `[${m.id}] ${m.output || ''}`).join('\n\n')}
+
+輸出 JSON：
+{
+  "_turn": ${(spec._turn || 0) + 1},
+  "summary": "整合摘要（一段）",
+  "risks": ["關鍵風險，最多3個"],
+  "gaps": ["整合缺口，最多2個"]
+}`
+};
+
+// ══════════════════════════════════════════════
+// CURRENT PROMPT LOGIC
+// ══════════════════════════════════════════════
+function getCurrentPrompt() {
+  const req = document.getElementById('user-req')?.value?.trim() || '';
+  const jsonRaw = document.getElementById('json-input')?.value?.trim() || '';
+
+  // Step 1: INIT
+  if (!spec.goal) {
+    return currentMode === 'deep'
+      ? PROMPTS.INIT_DEEP(req, jsonRaw)
+      : PROMPTS.INIT_FAST(req, jsonRaw);
+  }
+
+  // Find current module
+  const m = getActiveModule();
+
+  // All done → FINAL
+  if (!m) {
+    if (spec.global_status !== 'done') return PROMPTS.FINAL(spec.goal, spec.modules);
+    return '✓ 全部完成。請匯出 JSON 儲存結果。';
+  }
+
+  // Deep: candidates phase
+  if (currentMode === 'deep' && m.status === 'building' && !m.output && !m.candidates) {
+    return PROMPTS.BUILD_CANDIDATES(spec.goal, spec.constraints, m);
+  }
+  // Deep: distill phase
+  if (currentMode === 'deep' && m.status === 'building' && m.candidates && !m.output) {
+    return PROMPTS.DISTILL(spec.goal, m);
+  }
+  // Fast build or after distill: build
+  if (m.status === 'building' || m.status === 'init') {
+    return PROMPTS.BUILD_FAST(spec.goal, spec.constraints, m);
+  }
+  // Fix phase
+  if (m.status === 'fixing') {
+    return PROMPTS.FIX(spec.goal, m);
+  }
+  // Validating (shouldn't normally show, but just in case)
+  if (m.status === 'validating') {
+    return '正在驗證輸出… 請稍候';
+  }
+
+  return '所有模組已完成。';
+}
+
+function getActiveModule() {
+  return spec.modules.find(m => m.status !== 'done' && m.status !== 'blocked') || null;
+}
+
+// ══════════════════════════════════════════════
+// SUBMIT RESPONSE (called by user manually or auto-step)
+// ══════════════════════════════════════════════
+function processResponse(raw) {
+  // ── JSON_START/END 標籤剝離 ──
+  raw = stripTags(raw);
+
+  const data = extractJSON(raw);
+  if (!data) { toast('✗ 解析失敗，請確認 AI 輸出包含 JSON'); return; }
+
+  // ── Event Layer 路徑（優先判斷）──
+  if (Array.isArray(data) && data.length > 0 && ALLOWED_TYPES.includes(data[0]?.type)) {
+    const validCount = data.filter(validateEvent).length;
+    if (validCount > 0) {
+      appendEvent(data);
+      toast(`✓ 收到 ${validCount} 個 Events（略過 ${data.length - validCount} 個無效）`);
+      return;
+    } else {
+      toast('✗ Event 陣列中無合法事件，請確認 type/module/content 欄位');
+      return;
+    }
+  }
+
+  spec._turn = data._turn || (spec._turn + 1);
+
+  // STEP 1: INIT
+  if (!spec.goal) {
+    if (!data.goal) { toast('✗ 缺少 goal 欄位'); return; }
+    spec.goal = data.goal;
+    spec.constraints = data.constraints || [];
+    spec.modules = (data.modules || []).slice(0, 4).map(m => ({
+      id: m.id, desc: m.desc || m.description || '',
+      status: 'init', output: null, issues: [], confidence: null,
+      candidates: null, attempts: 0
+    }));
+    spec.global_status = 'building';
+    if (spec.modules.length) spec.modules[0].status = 'building';
+    renderState();
+    toast(`✓ INIT 完成：${spec.modules.length} 個模組`);
+    appendEvent([{
+      type: 'proposal',
+      module: '_root',
+      content: `目標確定：${spec.goal}。模組：${spec.modules.map(m => m.id).join('、')}`
+    }]);
+    return;
+  }
+
+  const m = getActiveModule();
+
+  // FINAL
+  if (!m) {
+    spec.final = { summary: data.summary || '', risks: data.risks || [], gaps: data.gaps || [] };
+    spec.global_status = 'done';
+    renderState();
+    toast('✓ 全部完成！');
+    const finalEvts = [];
+    (spec.final.risks || []).forEach(r => finalEvts.push({
+      type: 'insight', module: '_root', content: `風險：${r}`
+    }));
+    (spec.final.gaps || []).forEach(g => finalEvts.push({
+      type: 'insight', module: '_root', content: `缺口：${g}`
+    }));
+    if (finalEvts.length) appendEvent(finalEvts);
+    return;
+  }
+
+  // Deep: received candidates
+  if (currentMode === 'deep' && data.candidates && !m.output) {
+    m.candidates = data.candidates;
+    renderState();
+    toast(`✓ 候選方案已收到，準備蒸餾`);
+    return;
+  }
+
+  // BUILD / DISTILL output received
+  if (data.output !== undefined && m.status === 'building') {
+    m.output = data.output;
+    m.issues = data.issues || [];
+    m.confidence = data.confidence ?? null;
+
+    // Run validation
+    m.status = 'validating';
+    renderState();
+
+    const validation = validateOutput(m.output, m.id);
+
+    if (validation.pass && m.issues.length === 0) {
+      m.status = 'done';
+      advanceToNext();
+      toast(`✓ ${m.id} 驗證通過 → done`);
+      appendEvent([{
+        type: 'decision',
+        module: m.id,
+        content: `${m.id} 設計通過驗證，confidence: ${m.confidence ?? '—'}`
+      }]);
+    } else if (!validation.pass) {
+      // Validation failed: inject error into issues and go to fix
+      if (!m.issues.includes(validation.error)) m.issues.push(validation.error);
+      m.status = 'fixing';
+      m.attempts++;
+      toast(`⚠ ${m.id} 驗證失敗 → FIX`);
+      appendEvent([{
+        type: 'question',
+        module: m.id,
+        content: `${m.id} 驗證失敗：${validation.error}`
+      }]);
+    } else {
+      // Validation pass but has issues: go to fix
+      m.status = 'fixing';
+      m.attempts++;
+      toast(`⚠ ${m.id} 有問題 → FIX`);
+      appendEvent(m.issues.map(issue => ({
+        type: 'question',
+        module: m.id,
+        content: issue
+      })));
+    }
+    renderState();
+    return;
+  }
+
+  // FIX output
+  if (data.output !== undefined && m.status === 'fixing') {
+    m.output = data.output;
+    m.issues = data.issues || [];
+
+    const validation = validateOutput(m.output, m.id);
+    if (validation.pass && m.issues.length === 0) {
+      m.status = 'done';
+      advanceToNext();
+      toast(`✓ ${m.id} 修正通過 → done`);
+      const qIds = events.filter(e => e.type === 'question' && e.module === m.id).map(e => e.id);
+      appendEvent([{
+        type: 'decision',
+        module: m.id,
+        content: `${m.id} 修正完成`,
+        refs: qIds
+      }]);
+    } else {
+      m.status = 'blocked';
+      m.issues = m.issues.length ? m.issues : [validation.error || '修正後仍有問題'];
+      advanceToNext();
+      toast(`✗ ${m.id} 無法修正 → blocked，跳至下一模組`);
+      appendEvent([{
+        type: 'insight',
+        module: m.id,
+        content: `${m.id} 無法修正，標記 blocked。原因：${m.issues.join('；')}`
+      }]);
+    }
+    renderState();
+    return;
+  }
+
+  toast('⚠ 無法識別此輸出，請確認格式');
+}
+
+function submitAIResponse() {
+  const el = document.getElementById('ai-response');
+  const raw = el?.value?.trim();
+  if (!raw) { toast('請先貼入 AI 回覆'); return; }
+  processResponse(raw);
+  if (el) el.value = '';
+}
+
+function advanceToNext() {
+  const next = spec.modules.find(m => m.status === 'init');
+  if (next) {
+    next.status = 'building';
+  } else {
+    const allDone = spec.modules.every(m => m.status === 'done' || m.status === 'blocked');
+    if (allDone) spec.global_status = 'done';
+  }
+}
+
+// ══════════════════════════════════════════════
+// DISCUSS LOGIC
+// ══════════════════════════════════════════════
+
+// Parse raw AI output for snapshot or discussion JSON
+function parseDiscussOutput(raw) {
+  // Try extracting from ```json blocks first
+  const blocks = [...raw.matchAll(/```json\s*([\s\S]*?)```/g)].map(m => m[1].trim());
+  for (const b of blocks) {
+    const d = extractJSON(b);
+    if (d && (d._snapshot || d._discussion)) return d;
+  }
+  // Fallback: try the whole text
+  return extractJSON(raw);
+}
+
+function processDiscussResponse(raw) {
+  const data = parseDiscussOutput(raw);
+  if (!data) { toast('⚠ 找不到 Snapshot 或 Discussion JSON'); return; }
+
+  discuss._turns = data._turn || data._turns || discuss._turns + 1;
+
+  if (data._discussion) {
+    // Final discussion JSON
+    discuss.final = data;
+    renderDiscuss();
+    document.getElementById('btn-transfer').style.display = '';
+    document.getElementById('btn-export-discuss').style.display = '';
+    document.getElementById('dp-hint').textContent = '討論完成。點「轉入 Fast/Deep」繼續編譯，或先匯出 JSON 存檔。';
+    toast('✓ Discussion JSON 已記錄，可轉入編譯');
+  } else if (data._snapshot) {
+    // Append snapshot
+    discuss.snapshots.push(data);
+    renderDiscuss();
+    toast(`✓ Snapshot T${discuss._turns} 已記錄`);
+  } else {
+    toast('⚠ 格式不符，需包含 _snapshot 或 _discussion 欄位');
+  }
+}
+
+function renderDiscuss() {
+  const latest = discuss.final || (discuss.snapshots.length ? discuss.snapshots[discuss.snapshots.length - 1] : null);
+  if (!latest) return;
+
+  const phaseLabel = { probing: '⬡ 確認前提', exploring: '◈ 探索方向', converging: '◎ 收斂確認' };
+
+  if (discuss.final) {
+    document.getElementById('dp-phase').textContent = '✓ DONE';
+    document.getElementById('dp-phase').style.color = 'var(--C)';
+    document.getElementById('dp-turn').textContent = `${discuss._turns} 輪`;
+    document.getElementById('dp-goal').textContent = discuss.final.goal || '—';
+
+    // Show confirmed constraints
+    const c = discuss.final.constraints || [];
+    renderTagList('dp-confirmed', 'dp-confirmed-wrap', c, 'var(--C)');
+
+    // Open questions
+    const oq = discuss.final.open_questions || [];
+    renderTagList('dp-oq', 'dp-oq-wrap', oq, 'var(--gold)');
+
+    // Directions
+    const dirs = discuss.final.directions || [];
+    renderDirections(dirs);
+
+    // Done box
+    const done = document.getElementById('dp-done');
+    done.style.display = '';
+    done.innerHTML = `<strong>推薦模式：${discuss.final.recommended_mode?.toUpperCase() || '—'}</strong><br>${esc(discuss.final.notes || '')}`;
+  } else {
+    document.getElementById('dp-phase').textContent = phaseLabel[latest.phase] || latest.phase || '—';
+    document.getElementById('dp-phase').style.color = 'var(--C)';
+    document.getElementById('dp-turn').textContent = `T${latest._turn || discuss._turns}`;
+    document.getElementById('dp-goal').textContent = latest.tentative_goal || '（尚未確定）';
+
+    const c = latest.confirmed || [];
+    renderTagList('dp-confirmed', 'dp-confirmed-wrap', c, 'var(--C)');
+
+    const oq = latest.open_questions || [];
+    renderTagList('dp-oq', 'dp-oq-wrap', oq, 'var(--gold)');
+
+    const dirs = latest.directions || [];
+    renderDirections(dirs);
+  }
+}
+
+function renderTagList(listId, wrapId, items, color) {
+  const wrap = document.getElementById(wrapId);
+  const list = document.getElementById(listId);
+  if (!items.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  list.innerHTML = items.map(item => `
+    <div style="display:flex;gap:8px;align-items:flex-start;font-size:10px;color:var(--text);line-height:1.5;">
+      <span style="color:${color};flex-shrink:0;margin-top:2px;">▸</span>
+      <span>${esc(item)}</span>
+    </div>`).join('');
+}
+
+function renderDirections(dirs) {
+  const wrap = document.getElementById('dp-dir-wrap');
+  const list = document.getElementById('dp-directions');
+  if (!dirs.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+
+  const statusStyle = {
+    active:      { color: 'var(--C)',      bg: 'rgba(61,220,132,0.08)',   border: 'rgba(61,220,132,0.25)',  label: 'ACTIVE' },
+    parked:      { color: 'var(--gold)',   bg: 'rgba(240,192,64,0.06)',   border: 'rgba(240,192,64,0.2)',   label: 'PARKED' },
+    eliminated:  { color: 'var(--dim)',    bg: 'rgba(48,61,90,0.3)',      border: 'rgba(48,61,90,0.5)',     label: 'OUT' },
+    // from _discussion
+    true:        { color: 'var(--C)',      bg: 'rgba(61,220,132,0.08)',   border: 'rgba(61,220,132,0.25)',  label: 'ADOPTED' },
+    false:       { color: 'var(--dim)',    bg: 'rgba(48,61,90,0.3)',      border: 'rgba(48,61,90,0.5)',     label: 'DROPPED' },
+  };
+
+  list.innerHTML = dirs.map(d => {
+    const key = d.status !== undefined ? d.status : (d.adopted !== undefined ? String(d.adopted) : 'active');
+    const s = statusStyle[key] || statusStyle.active;
+    return `<div style="
+      padding:8px 10px;border-radius:4px;
+      background:${s.bg};border:1px solid ${s.border};
+      display:flex;gap:10px;align-items:flex-start;">
+      <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
+        <div style="font-family:var(--mono);font-size:9px;color:${s.color};">${esc(d.id)} · ${esc(d.label || '')}</div>
+        <div style="font-size:10px;color:var(--text);line-height:1.5;">${esc(d.summary || d.reason || '')}</div>
+      </div>
+      <span style="font-family:var(--mono);font-size:7px;color:${s.color};
+        border:1px solid ${s.border};border-radius:2px;padding:1px 5px;white-space:nowrap;margin-top:1px;">${s.label}</span>
+    </div>`;
+  }).join('');
+}
+
+// Paste snapshot from clipboard or prompt
+function pasteSnapshot() {
+  const raw = prompt('貼入 AI 的 Snapshot 或 Discussion JSON：');
+  if (!raw) return;
+  processDiscussResponse(raw);
+}
+
+// Transfer discussion final JSON → inject as INIT input
+function transferToInit() {
+  if (!discuss.final) { toast('尚無 Discussion JSON'); return; }
+  const f = discuss.final;
+
+  // Auto-inject into the json-input field and switch to recommended mode
+  const mode = f.recommended_mode || 'fast';
+  selectMode(mode);
+
+  // Build a pre-filled req from goal + context + notes
+  const req = [f.goal, f.context, f.notes].filter(Boolean).join('\n\n');
+  const reqEl = document.getElementById('user-req');
+  if (reqEl) reqEl.value = req;
+  onReqChange();
+
+  // Pre-fill json-input with constraints as partial spec
+  const partialSpec = {
+    goal: f.goal || '',
+    constraints: f.constraints || [],
+    _from_discuss: true
+  };
+  const jsonEl = document.getElementById('json-input');
+  if (jsonEl) {
+    jsonEl.value = JSON.stringify(partialSpec, null, 2);
+    onJsonChange();
+    // Open inject area
+    const area = document.getElementById('inject-area');
+    const arrow = document.getElementById('inject-arrow');
+    area.classList.add('open');
+    arrow.classList.add('open');
+  }
+
+  toast(`✓ 已轉入 ${mode.toUpperCase()} 模式，需求已填入`);
+
+  // Scroll to spec section
+  document.getElementById('spec-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Export discuss state as JSON
+function doExportDiscuss() {
+  const data = { snapshots: discuss.snapshots, final: discuss.final, _turns: discuss._turns };
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const slug = (discuss.final?.goal || 'discuss').replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '-').slice(0, 24);
+  a.href = url; a.download = `${slug}-discuss.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('✓ Discussion 已匯出');
+}
+
+// ══════════════════════════════════════════════
+// DISCUSS PROMPT
+// ══════════════════════════════════════════════
+function buildDiscussPrompt(topic) {
+  return `你是一個開發方向引導者，負責在正式編譯前幫助使用者釐清思路。
+
+【你的工作流程】
+
+第一步：健壯性確認（最優先）
+- 閱讀使用者描述，立刻找出最關鍵的一個缺口（用戶端、技術限制、前提假設、範圍邊界）
+- 提出那一個問題，等待回答
+- 下一輪再找下一個缺口
+- 持續到基本前提都確認為止，再展開方向討論
+
+第二步：方向探索
+- 可以自由提出想法、假設、可能性
+- 可以指出潛在矛盾或更好的替代方向
+- 用對話語氣，不需要正式
+- 不需要每句話都輸出 JSON
+
+每一輪回覆末尾附上 Snapshot（必須）：
+\`\`\`json
+{
+  "_snapshot": true,
+  "_turn": N,
+  "phase": "probing | exploring | converging",
+  "tentative_goal": "目前最可能的目標，若未確定留空字串",
+  "confirmed": ["已確認的前提或限制"],
+  "open_questions": ["尚未確認的關鍵問題"],
+  "directions": [
+    {"id": "D1", "label": "方向名稱", "summary": "一句話", "status": "active | parked | eliminated"}
+  ]
+}
+\`\`\`
+
+【結束條件】
+當使用者說「結束」、「可以了」、「輸出」或類似語意時：
+輸出完整 Discussion JSON（不再附 Snapshot）：
+\`\`\`json
+{
+  "_discussion": true,
+  "_turns": N,
+  "goal": "確認的目標（一句話）",
+  "context": "背景與前提說明",
+  "constraints": ["已確認的限制"],
+  "open_questions": ["仍未解決、需要 INIT 後處理的問題"],
+  "directions": [
+    {"id": "D1", "label": "...", "summary": "...", "adopted": true, "reason": "選擇原因"},
+    {"id": "D2", "label": "...", "summary": "...", "adopted": false, "reason": "排除原因"}
+  ],
+  "recommended_mode": "fast",
+  "notes": "給後續 INIT 的補充說明"
+}
+\`\`\`
+
+【現在開始】
+${topic ? `使用者描述：\n${topic}\n\n讀完後，找出最關鍵的缺口，提出第一個確認問題。` : '請使用者描述他想做什麼，或想解決什麼問題。'}`;
+}
+
+// ══════════════════════════════════════════════
+// MODE
+// ══════════════════════════════════════════════
+function selectMode(mode) {
+  currentMode = mode;
+  document.getElementById('card-fast').className    = 'mode-card' + (mode === 'fast'    ? ' active'       : '');
+  document.getElementById('card-deep').className    = 'mode-card' + (mode === 'deep'    ? ' active-gold'  : '');
+  document.getElementById('card-discuss').className = 'mode-card' + (mode === 'discuss' ? ' active-green' : '');
+
+  const btn      = document.getElementById('copy-btn');
+  const btnTitle = document.getElementById('btn-title');
+  const btnHint  = document.getElementById('btn-hint');
+  const specSec  = document.getElementById('spec-section');
+  const discSec  = document.getElementById('discuss-section');
+
+  // Reset btn inline style from discuss mode
+  btn.style.background = '';
+  btn.style.boxShadow  = '';
+  btn.style.color      = '';
+
+  if (mode === 'fast') {
+    btn.className = '';
+    btnTitle.textContent = '複製 Fast 指令';
+    btnHint.textContent  = '貼給 AI，直接生成 → 驗證';
+    specSec.style.display = '';
+    discSec.style.display = 'none';
+    document.getElementById('state-section').style.display = '';
+    document.getElementById('discuss-state-section').style.display = 'none';
+  } else if (mode === 'deep') {
+    btn.className = 'gold-mode';
+    btnTitle.textContent = '複製 Deep 指令';
+    btnHint.textContent  = '貼給 AI，多候選 → 蒸餾 → 驗證';
+    specSec.style.display = '';
+    discSec.style.display = 'none';
+    document.getElementById('state-section').style.display = '';
+    document.getElementById('discuss-state-section').style.display = 'none';
+  } else {
+    btn.className = '';
+    btn.style.background = 'var(--C)';
+    btn.style.color = '#040810';
+    btnTitle.textContent = '複製 Discuss 指令';
+    btnHint.textContent  = '貼給 AI，開始來回確認方向';
+    specSec.style.display = 'none';
+    discSec.style.display = 'flex';
+    document.getElementById('state-section').style.display = 'none';
+    document.getElementById('discuss-state-section').style.display = 'flex';
+  }
+
+  renderFlow();
+}
+
+// ══════════════════════════════════════════════
+// COPY INSTRUCTION
+// ══════════════════════════════════════════════
+function copyInstruction() {
+  let instruction;
+
+  if (currentMode === 'discuss') {
+    const topic = document.getElementById('discuss-topic')?.value?.trim() || '';
+    instruction = buildDiscussPrompt(topic);
+  } else {
+    const prompt = getCurrentPrompt();
+    instruction = `你是 Semantic Compiler v9.0。規格如下：\n\n${SPEC_TEXT}\n\n---\n\n${prompt}`;
+  }
+
+  const btn      = document.getElementById('copy-btn');
+  const btnTitle = document.getElementById('btn-title');
+  const prevBg   = btn.style.background;
+  const prevTitle = btnTitle.textContent;
+
+  const doFlash = () => {
+    btn.style.background = 'var(--C)';
+    btnTitle.textContent = '✓ 已複製！';
+    setTimeout(() => {
+      btn.style.background = prevBg;
+      btnTitle.textContent = prevTitle;
+      // Restore discuss btn color fully
+      if (currentMode === 'discuss') btn.style.background = 'var(--C)';
+      else btn.style.background = '';
+    }, 1800);
+    toast('✓ 指令已複製 → 貼給 AI');
+  };
+
+  navigator.clipboard.writeText(instruction).then(doFlash).catch(() => {
+    fallbackCopy(instruction);
+    doFlash();
+  });
+}
+
+// ══════════════════════════════════════════════
+// STATE RENDER
+// ══════════════════════════════════════════════
+function renderState() {
+  const panel = document.getElementById('state-panel');
+
+  if (!spec.goal && !spec.modules.length) {
+    panel.classList.remove('open');
+    return;
+  }
+  panel.classList.add('open');
+
+  document.getElementById('sv-goal').textContent = spec.goal || '—';
+  document.getElementById('sv-status').textContent = spec.global_status.toUpperCase();
+
+  const list = document.getElementById('modules-list');
+  list.innerHTML = spec.modules.filter(m => m.id !== '_root').map(m => {
+    const cls = m.status === 'done' ? 'done' : m.status === 'blocked' ? 'warn' : m.status === 'init' ? '' : 'active';
+    const dotCls = m.status === 'done' ? 'done' : m.status === 'blocked' ? 'warn' : m.status === 'init' ? '' : 'active';
+    const tagCls = {
+      init: 'tag-init', building: 'tag-building', validating: 'tag-validating',
+      fixing: 'tag-fixing', done: 'tag-done', blocked: 'tag-blocked'
+    }[m.status] || 'tag-init';
+    const label = {
+      init: 'INIT', building: 'BUILDING', validating: 'VALIDATING',
+      fixing: 'FIX', done: 'DONE', blocked: 'BLOCKED'
+    }[m.status] || m.status.toUpperCase();
+    return `<div class="mod-row ${cls}">
+      <div class="mod-dot ${dotCls}"></div>
+      <span class="mod-id-text">${esc(m.id)} <span style="color:var(--dim);font-size:8px">${esc(m.desc?.slice(0,30) || '')}</span></span>
+      <span class="mod-status-tag ${tagCls}">${label}</span>
+    </div>`;
+  }).join('');
+
+  // Final
+  const fw = document.getElementById('sv-final-wrap');
+  const fv = document.getElementById('sv-final');
+  if (spec.final) {
+    fw.style.display = '';
+    fv.textContent = spec.final.summary || '';
+  } else {
+    fw.style.display = 'none';
+  }
+}
+
+// ══════════════════════════════════════════════
+// REQ / JSON INPUT
+// ══════════════════════════════════════════════
+function onReqChange() {
+  const val = document.getElementById('user-req').value.trim();
+  const hint = document.getElementById('req-hint');
+  hint.textContent = val ? `✓ ${val.length} 字` : '—';
+  hint.style.color = val ? 'var(--C)' : 'var(--dim)';
+}
+
+function toggleInject() {
+  const area = document.getElementById('inject-area');
+  const arrow = document.getElementById('inject-arrow');
+  const open = !area.classList.contains('open');
+  area.classList.toggle('open', open);
+  arrow.classList.toggle('open', open);
+}
+
+function onJsonChange() {
+  const raw = document.getElementById('json-input').value.trim();
+  const el = document.getElementById('inject-status');
+  if (!raw) { el.textContent = '—'; el.className = ''; return; }
+  const data = extractJSON(raw);
+  if (data && data.goal) {
+    el.textContent = `✓ 偵測到 Spec：${data.goal.slice(0,40)}`;
+    el.className = 'ok';
+  } else if (data) {
+    el.textContent = `✓ JSON 有效（${Object.keys(data).slice(0,4).join(', ')}）`;
+    el.className = 'ok';
+  } else {
+    el.textContent = '✗ 無法解析';
+    el.className = 'err';
+  }
+}
+
+function loadFromInject() {
+  const raw = document.getElementById('json-input').value.trim();
+  if (!raw) { toast('沒有 JSON 可載入'); return; }
+  const data = extractJSON(raw);
+  if (!data) { toast('✗ JSON 解析失敗'); return; }
+  if (!data.goal) { toast('✗ 缺少 goal 欄位'); return; }
+
+  // ── Spec schema 驗證（Block 3）──────────────────
+  function _validateInjectSpec(obj) {
+    const errs = [];
+    if (typeof obj.goal !== 'string')    errs.push('goal 必須是字串');
+    if (!Array.isArray(obj.modules))     errs.push('modules 必須是陣列');
+    if (!Array.isArray(obj.constraints)) errs.push('constraints 必須是陣列');
+    if (Array.isArray(obj.modules)) { // truthy 非陣列（如字串）不能呼叫 forEach
+      obj.modules.forEach((m, i) => {
+        if (!m.id) errs.push(`modules[${i}] 缺少 id`);
+      });
+    }
+    return errs;
+  }
+  const specErrors = _validateInjectSpec(data);
+  if (specErrors.length) {
+    const el = document.getElementById('inject-status');
+    el.textContent = '✗ Spec 格式錯誤：' + specErrors.join('；');
+    el.className = 'err';
+    return;
+  }
+  // ────────────────────────────────────────────────
+
+  if (!confirm('確定用此 JSON 覆蓋目前 Spec？')) return;
+
+  spec.goal = data.goal;
+  spec.constraints = data.constraints || [];
+  spec.modules = (data.modules || []).slice(0, 4).map(m => ({
+    id: m.id, desc: m.desc || m.description || '',
+    status: m.status || 'init',
+    output: m.output || null, issues: m.issues || [],
+    confidence: m.confidence || null, candidates: m.candidates || null,
+    attempts: m.attempts || 0
+  }));
+  spec.global_status = data.global_status || 'building';
+  spec.final = data.final || null;
+  spec._turn = data._turn || 0;
+
+  document.getElementById('json-input').value = '';
+  document.getElementById('inject-status').textContent = '—';
+  document.getElementById('inject-status').className = '';
+  renderState();
+  toast(`✓ 載入成功：${spec.modules.length} 個模組`);
+}
+
+// ══════════════════════════════════════════════
+// FLOW RENDER
+// ══════════════════════════════════════════════
+const FLOWS = {
+  fast: [
+    { n: '1', text: '上傳此文件給 AI' },
+    { n: '2', text: '輸入需求（可選），<strong>複製 Fast 指令</strong>貼給 AI' },
+    { n: '3', text: 'AI 輸出 <strong>INIT JSON</strong>，開始逐模組 BUILD' },
+    { n: '4', text: '<strong>VALIDATE → FIX → DONE</strong>，完成後匯出' },
+  ],
+  deep: [
+    { n: '1', text: '上傳此文件給 AI' },
+    { n: '2', text: '輸入需求（可選），<strong>複製 Deep 指令</strong>貼給 AI' },
+    { n: '3', text: 'AI 輸出 <strong>INIT → 3 候選 → DISTILL</strong>' },
+    { n: '4', text: '<strong>VALIDATE → DONE</strong>，完成後匯出 JSON' },
+  ],
+  discuss: [
+    { n: '1', text: '上傳此文件給 AI' },
+    { n: '2', text: '輸入主題（可選），<strong>複製 Discuss 指令</strong>貼給 AI' },
+    { n: '3', text: 'AI 逐步確認前提與限制，每輪附 <strong>Snapshot JSON</strong>' },
+    { n: '4', text: '說「可以了」→ AI 輸出 <strong>Discussion JSON</strong> → 接回 Fast/Deep' },
+  ]
+};
+
+function renderFlow() {
+  const steps = FLOWS[currentMode] || FLOWS.fast;
+  const colorClass = currentMode === 'deep' ? ' gold' : currentMode === 'discuss' ? ' green' : '';
+  document.getElementById('flow-steps').innerHTML = steps.map(s => `
+    <div class="flow-step">
+      <span class="flow-n${colorClass}">${s.n}</span>
+      <span>${s.text}</span>
+    </div>
+  `).join('');
+}
+
+// ══════════════════════════════════════════════
+// IMPORT / EXPORT / RESET
+// ══════════════════════════════════════════════
+function doImport() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const r = new FileReader();
+    r.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (data.spec && data.events !== undefined) {
+          // v9.0 bundle 格式（向下兼容 v7.0）
+          spec   = data.spec;
+          events = Array.isArray(data.events) ? data.events : [];
+          // 導入後強制 Reducer 確保狀態同步
+          spec = devlogReducer(events, spec);
+          if (data.spec._mode) selectMode(data.spec._mode);
+          renderState();
+          toast(`✓ 載入成功（bundle，${events.length} 個 events）`);
+        } else {
+          // 兼容舊版 JSON（只有 spec，無 events）
+          spec   = data;
+          events = [];
+          if (spec._mode) selectMode(spec._mode);
+          renderState();
+          toast('！偵測到舊版檔案，事件流已初始化為空');
+        }
+      } catch { toast('✗ JSON 解析失敗'); }
+    };
+    r.readAsText(file);
+  };
+  input.click();
+}
+
+function doExport() {
+  spec._mode = currentMode;
+  const bundle = {
+    events:  events,
+    spec:    spec,
+    version: '9.0'
+  };
+  const json = JSON.stringify(bundle, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const slug = (spec.goal || 'spec').replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '-').slice(0, 24);
+  a.href = url; a.download = `${slug}-v9.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast(`✓ 已匯出（spec + ${events.length} 個 events）`);
+}
+
+function exportForAggregator() {
+  if (!events.length) { toast('尚無 events 可匯出'); return; }
+  const payload = { events: events };
+  const json = JSON.stringify(payload, null, 2);
+  navigator.clipboard.writeText(json)
+    .then(() => toast(`✓ ${events.length} 個 events 已複製 → 貼給 Aggregator`))
+    .catch(() => { fallbackCopy(json); toast('✓ 已複製（fallback）'); });
+}
+
+function doReset() {
+  if (!confirm('確定重置？')) return;
+  spec = { goal: '', constraints: [], modules: [], global_status: 'init', final: null, _turn: 0, _mode: currentMode };
+  discuss = { active: false, snapshots: [], final: null, _turns: 0 };
+  events = [];
+  _evtCounter = 0;
+  const reqEl = document.getElementById('user-req');
+  const jsonEl = document.getElementById('json-input');
+  const discEl = document.getElementById('discuss-topic');
+  if (reqEl) reqEl.value = '';
+  if (jsonEl) jsonEl.value = '';
+  if (discEl) discEl.value = '';
+  const rh = document.getElementById('req-hint');
+  if (rh) { rh.textContent = '—'; rh.style.color = ''; }
+  const is = document.getElementById('inject-status');
+  if (is) { is.textContent = '—'; is.className = ''; }
+  document.getElementById('btn-transfer').style.display = 'none';
+  document.getElementById('btn-export-discuss').style.display = 'none';
+  document.getElementById('dp-done').style.display = 'none';
+  document.getElementById('dp-hint').textContent = '將 AI 每輪輸出的 Snapshot 貼入，追蹤討論進度。';
+  renderState();
+  toast('✓ 已重置');
+}
+
+// ══════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════
+function esc(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text; document.body.appendChild(ta); ta.select();
+  document.execCommand('copy'); document.body.removeChild(ta);
+}
+
+let _toastTimer;
+function toast(msg, dur = 2200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), dur);
+}
+
+function toggleSchema() {
+  const body = document.getElementById('schema-body');
+  const arrow = document.getElementById('schema-arrow');
+  const open = body.classList.toggle('open');
+  arrow.classList.toggle('open', open);
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+document.getElementById('discuss-state-section').style.display = 'none';
+renderFlow();
+renderState();
+</script>
+</body>
+</html>
